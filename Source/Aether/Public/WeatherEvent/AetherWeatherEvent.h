@@ -80,7 +80,6 @@ UENUM(BlueprintType)
 enum class EWeatherEventExecuteState : uint8
 {
 	JustSpawned		UMETA(DisplayName = "JustSpawned"),
-	Warming			UMETA(DisplayName = "Warming"),
 	BlendingIn		UMETA(DisplayName = "BlendigIn"),
 	Running			UMETA(DisplayName = "Running"),
 	BlendingOut		UMETA(DisplayName = "BlendigIn"),
@@ -268,25 +267,14 @@ public:
 		BlendOutTime = 0.0f;
 	}
 	
-	void ConsumeEvent_Native(float DeltaTime, AAetherAreaController* AetherController);
-	
-protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Aether Weather Event")
-	void ConsumeEvent(float DeltaTime, AAetherAreaController* AetherController);
+	EWeatherEventExecuteState BlendIn(float DeltaTime, AAetherAreaController* AetherController);
 	
-public:
-	UFUNCTION(BlueprintCallable, Category = "Aether Weather Event")
-	void SetState(EWeatherEventExecuteState NewState, AAetherAreaController* AetherController);
+	UFUNCTION(BlueprintNativeEvent, Category = "Aether Weather Event")
+	EWeatherEventExecuteState Run(float DeltaTime, AAetherAreaController* AetherController);
 	
-	UFUNCTION(BlueprintCallable, Category = "Aether Weather Event")
-	void Cancel(AAetherAreaController* AetherController);
-	
-protected:
-	UFUNCTION(BlueprintCallable, Category = "Aether Weather Event")
-	void OnInstanceBeginRunning(AAetherAreaController* AetherController);
-	
-	UFUNCTION(BlueprintCallable, Category = "Aether Weather Event")
-	void OnInstanceEndRunning(AAetherAreaController* AetherController);
+	UFUNCTION(BlueprintNativeEvent, Category = "Aether Weather Event")
+	EWeatherEventExecuteState BlendOut(float DeltaTime, AAetherAreaController* AetherController);
 };
 
 UCLASS()

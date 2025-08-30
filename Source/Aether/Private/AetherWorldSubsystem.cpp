@@ -10,6 +10,7 @@
 #include "Subsystems/SubsystemBlueprintLibrary.h"
 
 #include "AetherAreaController.h"
+#include "AetherCloudAvatar.h"
 #include "AetherLightingAvatar.h"
 #include "AetherPluginSettings.h"
 #include "AetherStats.h"
@@ -60,12 +61,25 @@ bool UAetherWorldSubsystem::DoesSupportWorldType(const EWorldType::Type WorldTyp
 
 bool UAetherWorldSubsystem::IsTickable() const
 {
-	if (UWorld* World = GetWorld())
+	if (const UWorld* World = GetWorld())
 	{
 		if (World->WorldType == EWorldType::Type::EditorPreview || World->WorldType == EWorldType::Type::GameRPC || World->WorldType == EWorldType::Type::Inactive || World->WorldType == EWorldType::Type::None)
 		{
 			return false;
 		}
+#if WITH_EDITOR
+		if (World->WorldType == EWorldType::Type::Editor && GEditor)
+		{
+			if (const FViewport* Viewport = GEditor->GetActiveViewport())
+			{
+				// Editor world still maintains when PIE, but it can not be ever tick controller or system.
+				if (Viewport->IsPlayInEditorViewport())
+				{
+					return false;
+				}
+			}
+		}
+#endif
 		return true;
 	}
 	return false;
@@ -77,20 +91,10 @@ void UAetherWorldSubsystem::Tick(float DeltaTime)
 	
 	SCOPE_CYCLE_COUNTER(STAT_AetherWorldSubsystem_Tick);
 	
-#if WITH_EDITOR
-	if (UWorld* World = GetWorld())
-	{
-		if (World->WorldType == EWorldType::Type::Editor)
-		{
-			DrawDebugString(World, FVector(0.0f, 0.0f, 200.0f), FString("AAAA"));
-		}
-		//DrawDebugString(World, FVector(0.0f, 0.0f, 200.0f), FString("AAAA"));
-	}
-#endif
-	
 	EvaluateAndTickActiveControllers(DeltaTime);
 	
 	UpdateSystemState();
+	
 	UpdateWorld();
 }
 
@@ -122,7 +126,7 @@ void UAetherWorldSubsystem::RegisterLightingAvatar(AAetherLightingAvatar* InAvat
 	LightingAvatar = InAvatar;
 }
 
-void UAetherWorldSubsystem::UnRegisterLightingAvatar(AAetherLightingAvatar* InAvatar)
+void UAetherWorldSubsystem::UnregisterLightingAvatar(AAetherLightingAvatar* InAvatar)
 {
 	if (!InAvatar)
 	{
@@ -131,6 +135,27 @@ void UAetherWorldSubsystem::UnRegisterLightingAvatar(AAetherLightingAvatar* InAv
 	if (LightingAvatar == InAvatar)
 	{
 		LightingAvatar = nullptr;
+	}
+}
+
+void UAetherWorldSubsystem::RegisterCloudAvatar(AAetherCloudAvatar* InAvatar)
+{
+	if (!InAvatar)
+	{
+		return;
+	}
+	CloudAvatar = InAvatar;
+}
+
+void UAetherWorldSubsystem::UnregisterCloudAvatar(AAetherCloudAvatar* InAvatar)
+{
+	if (!InAvatar)
+	{
+		return;
+	}
+	if (CloudAvatar == InAvatar)
+	{
+		CloudAvatar = nullptr;
 	}
 }
 
@@ -154,12 +179,72 @@ void UAetherWorldSubsystem::ModifyAllControllersSimulationPlanetType_Editor(cons
 		}
 	}
 }
+
+void UAetherWorldSubsystem::SyncOtherControllerDielRhythm_Editor(const AAetherAreaController* CenterController)
+{
+	if (!CenterController)
+	{
+		return;
+	}
+	for (AAetherAreaController* OtherController : Controllers)
+	{
+		if (OtherController)
+		{
+			bool bDirty = false;
+			if (OtherController->PeriodOfDay != CenterController->PeriodOfDay)
+			{
+				OtherController->PeriodOfDay = CenterController->PeriodOfDay;
+				bDirty |= true;
+			}
+			if (OtherController->DaysOfMonth != CenterController->DaysOfMonth)
+			{
+				OtherController->DaysOfMonth = CenterController->DaysOfMonth;
+				bDirty |= true;
+			}
+			if (OtherController->DaytimeSpeedScale != CenterController->DaytimeSpeedScale)
+			{
+				OtherController->DaytimeSpeedScale = CenterController->DaytimeSpeedScale;
+				bDirty |= true;
+			}
+			if (OtherController->NightSpeedScale != CenterController->NightSpeedScale)
+			{
+				OtherController->NightSpeedScale = CenterController->NightSpeedScale;
+				bDirty |= true;
+			}
+			if (OtherController->NorthDirectionYawOffset != CenterController->NorthDirectionYawOffset)
+			{
+				OtherController->NorthDirectionYawOffset = CenterController->NorthDirectionYawOffset;
+				bDirty |= true;
+			}
+			if (bDirty)
+			{
+				OtherController->MarkPackageDirty();
+			}
+		}
+	}
+}
+
+void UAetherWorldSubsystem::CorrectOtherControllerInitTimeStamp_Editor(const AAetherAreaController* CenterController)
+{
+	if (!CenterController)
+	{
+		return;
+	}
+	const float& Longitude = CenterController->Longitude;
+	for (AAetherAreaController* OtherController : Controllers)
+	{
+		if (OtherController)
+		{
+			
+		}
+	}
+}
 #endif
 
 void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
 {
+	bool bCouldTickController = false;
 	FVector StreamingSourceLocation = FVector::ZeroVector;
-	bool bCouldTickSystem = false;
 #if WITH_EDITOR
 	if (UWorld* World = GetWorld())
 	{
@@ -167,14 +252,13 @@ void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
 		{
 			if (const FViewport* Viewport = GEditor->GetActiveViewport())
 			{
-				//Viewport->IsPlayInEditorViewport()
 				if (FViewportClient* ViewportClient = Viewport->GetClient())
 				{
 					if (const FEditorViewportClient* EditorViewportClient = static_cast<FEditorViewportClient*>(ViewportClient))
-                    {
-                        StreamingSourceLocation = EditorViewportClient->GetViewLocation();
-                        bCouldTickSystem = true;
-                    }
+					{
+						StreamingSourceLocation = EditorViewportClient->GetViewLocation();
+						bCouldTickController = true;
+					}
 				}
 			}
 		}
@@ -185,7 +269,7 @@ void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
 			{
 				FRotator Rotation;
 				PlayerController->GetPlayerViewPoint(StreamingSourceLocation, Rotation);
-				bCouldTickSystem = true;
+				bCouldTickController = true;
 			}
 		}
 	}
@@ -197,13 +281,13 @@ void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
         {
         	FRotator Rotation;
         	PlayerController->GetPlayerViewPoint(StreamingSourceLocation, Rotation);
-        	bCouldTickSystem = true;
+        	bCouldTickController = true;
         }
 	}
 #endif
 	
 	ActiveControllers.Reset();
-	if (bCouldTickSystem)
+	if (bCouldTickController)
 	{
 		TArray<TObjectPtr<AAetherAreaController>> SortedList = Controllers;
 		if (SortedList.Num() > 1)
@@ -235,34 +319,28 @@ void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
 void UAetherWorldSubsystem::UpdateSystemState()
 {
 	SystemState.Reset();
-	// Todo
-	int32 i = 0;
 	for (auto It = ActiveControllers.CreateConstIterator(); It; ++It)
 	{
-		if (i == 0)
-		{
-			SystemState = It.Key()->GetCurrentState() * It.Value();
-		}
-		else
-		{
-			SystemState = SystemState + It.Key()->GetCurrentState() * It.Value();
-		}
-		i++;
+		SystemState = SystemState + It.Key()->GetCurrentState() * It.Value();
 	}
 	SystemState.Normalize();
 }
 
 void UAetherWorldSubsystem::UpdateWorld()
 {
-	UpdateAvatarLighting();
+	UpdateAvatar();
 	UpdateSystemMaterialParameter();
 }
 
-void UAetherWorldSubsystem::UpdateAvatarLighting()
+void UAetherWorldSubsystem::UpdateAvatar()
 {
 	if (LightingAvatar)
 	{
 		LightingAvatar->UpdateLighting(SystemState);
+	}
+	if (CloudAvatar)
+	{
+		CloudAvatar->UpdateCloudLayers(SystemState);
 	}
 }
 

@@ -18,8 +18,6 @@ class AETHER_API UAetherWorldSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 	
-	friend class FAetherSceneViewExtension;
-	
 protected:
 	UPROPERTY()
 	TArray<TObjectPtr<class AAetherAreaController>> Controllers;
@@ -31,14 +29,17 @@ protected:
 	TObjectPtr<class AAetherLightingAvatar> LightingAvatar;
 	
 	UPROPERTY()
+	TObjectPtr<class AAetherCloudAvatar> CloudAvatar;
+	
+	UPROPERTY()
 	TObjectPtr<UMaterialParameterCollection> SystemMaterialParameterCollection;
 	
 	UPROPERTY()
 	FAetherState SystemState;
 	
-	TUniquePtr<FAetherViewParameters> CachedViewUniformShaderParameters;
+	//TUniquePtr<FAetherViewParameters> CachedViewUniformShaderParameters;
 	
-	TMap<int32, TUniquePtr<FAetherViewParameters>> Map;
+	//TMap<int32, TUniquePtr<FAetherViewParameters>> Map;
 	
 public:
 	UAetherWorldSubsystem();
@@ -64,12 +65,19 @@ public:
 	void UnRegisterController(AAetherAreaController* InController);
 	
 	void RegisterLightingAvatar(AAetherLightingAvatar* InAvatar);
-	void UnRegisterLightingAvatar(AAetherLightingAvatar* InAvatar);
+	void UnregisterLightingAvatar(AAetherLightingAvatar* InAvatar);
+	
+	void RegisterCloudAvatar(AAetherCloudAvatar* InAvatar);
+	void UnregisterCloudAvatar(AAetherCloudAvatar* InAvatar);
 	
 	void TriggerWeatherEventImmediately(const FGameplayTag& EventTag);
 	
 #if WITH_EDITOR
 	void ModifyAllControllersSimulationPlanetType_Editor(const ESimulationPlanetType& NewValue);
+	
+	void SyncOtherControllerDielRhythm_Editor(const AAetherAreaController* CenterController);
+	
+	void CorrectOtherControllerInitTimeStamp_Editor(const AAetherAreaController* CenterController);
 #endif
 	
 protected:
@@ -79,6 +87,7 @@ protected:
 	
 	void UpdateWorld();
 	
-	void UpdateAvatarLighting();
+	void UpdateAvatar();
+	
 	void UpdateSystemMaterialParameter();
 };

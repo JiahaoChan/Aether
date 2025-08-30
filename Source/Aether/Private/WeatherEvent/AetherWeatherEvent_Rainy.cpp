@@ -3,7 +3,7 @@
  *		Copyright Technical Artist - Jiahao.Chan, Individual. All Rights Reserved.
  */
 
-#include "WeatherEvent/AetherWeatherEvent_Rainy.h"
+#include "AetherWeatherEvent_Rainy.h"
 
 #include "Kismet/KismetMathLibrary.h"
 
@@ -21,38 +21,59 @@ UAetherWeatherEventInstance* UAetherWeatherEvent_Rainy::MakeInstance_Native(AAet
 	return Instance;
 }
 
-void UAetherWeatherEventInstance_Rainy::ConsumeEvent_Implementation(float DeltaTime, AAetherAreaController* AetherController)
+EWeatherEventExecuteState UAetherWeatherEventInstance_Rainy::BlendIn_Implementation(float DeltaTime, AAetherAreaController* AetherController)
 {
-	if (AetherController->GetCurrentState().AirTemperature < -5.0f)
+	check(AetherController);
+	if (!AetherController)
 	{
-		SetState(EWeatherEventExecuteState::BlendingOut, AetherController);
+		return EWeatherEventExecuteState::BlendingIn;
 	}
 	
-	if (State == EWeatherEventExecuteState::BlendingIn)
+	if (AetherController->GetCurrentState().AirTemperature < -5.0f)
 	{
-		float ThisFrameRainFall = FMath::Lerp(0.0f, PendingContributeRainFall, FMath::Clamp(CurrentStateLastTime / BlendInTime, 0.0f, 1.0f));
-		float LastFrameRainFall = FMath::Lerp(0.0f, PendingContributeRainFall, FMath::Clamp((CurrentStateLastTime - DeltaTime) / BlendInTime, 0.0f, 1.0f));
-		float Offset = ThisFrameRainFall - LastFrameRainFall;
-		AetherController->GetCurrentState().RainFall += Offset;
-		ContributedRainFall += Offset;
-		if (Offset <= 0.0f && CurrentStateLastTime > 0.0f)
-		{
-			SetState(EWeatherEventExecuteState::Running, AetherController);
-		}
+		AetherController->CancelWeatherEventImmediately(this, false);
+		return EWeatherEventExecuteState::BlendingIn;
 	}
-	else if (State == EWeatherEventExecuteState::BlendingOut)
+	
+	float ThisFrameRainFall = FMath::Lerp(0.0f, PendingContributeRainFall, FMath::Clamp(CurrentStateLastTime / BlendInTime, 0.0f, 1.0f));
+	float LastFrameRainFall = FMath::Lerp(0.0f, PendingContributeRainFall, FMath::Clamp((CurrentStateLastTime - DeltaTime) / BlendInTime, 0.0f, 1.0f));
+	float Offset = ThisFrameRainFall - LastFrameRainFall;
+	AetherController->GetCurrentState().RainFall += Offset;
+	ContributedRainFall += Offset;
+	if (Offset <= 0.0f && CurrentStateLastTime > 0.0f)
 	{
-		float ThisFrameRainFall = FMath::Lerp(ContributedRainFall, 0.0f, FMath::Clamp(CurrentStateLastTime / BlendOutTime, 0.0f, 1.0f));
-		float LastFrameRainFall = FMath::Lerp(ContributedRainFall, 0.0f, FMath::Clamp((CurrentStateLastTime - DeltaTime) / BlendOutTime, 0.0f, 1.0f));
-		float Offset = ThisFrameRainFall - LastFrameRainFall;
-		AetherController->GetCurrentState().RainFall += Offset;
-		if (Offset >= 0.0f && CurrentStateLastTime > 0.0f)
-		{
-			SetState(EWeatherEventExecuteState::Finished, AetherController);
-		}
+		return EWeatherEventExecuteState::Running;
 	}
-	else if (State == EWeatherEventExecuteState::Running)
+	return EWeatherEventExecuteState::BlendingIn;
+}
+
+EWeatherEventExecuteState UAetherWeatherEventInstance_Rainy::Run_Implementation(float DeltaTime, AAetherAreaController* AetherController)
+{
+	check(AetherController);
+	return EWeatherEventExecuteState::Running;
+}
+
+EWeatherEventExecuteState UAetherWeatherEventInstance_Rainy::BlendOut_Implementation(float DeltaTime, AAetherAreaController* AetherController)
+{
+	check(AetherController);
+	if (!AetherController)
 	{
-		
+		return EWeatherEventExecuteState::BlendingOut;
 	}
+	
+	if (AetherController->GetCurrentState().AirTemperature < -5.0f)
+	{
+		AetherController->CancelWeatherEventImmediately(this, false);
+		return EWeatherEventExecuteState::BlendingOut;
+	}
+	
+	float ThisFrameRainFall = FMath::Lerp(ContributedRainFall, 0.0f, FMath::Clamp(CurrentStateLastTime / BlendOutTime, 0.0f, 1.0f));
+	float LastFrameRainFall = FMath::Lerp(ContributedRainFall, 0.0f, FMath::Clamp((CurrentStateLastTime - DeltaTime) / BlendOutTime, 0.0f, 1.0f));
+	float Offset = ThisFrameRainFall - LastFrameRainFall;
+	AetherController->GetCurrentState().RainFall += Offset;
+	if (Offset >= 0.0f && CurrentStateLastTime > 0.0f)
+	{
+		return EWeatherEventExecuteState::Finished;
+	}
+	return EWeatherEventExecuteState::BlendingOut;
 }

@@ -10,13 +10,15 @@ public class Aether : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
-				// ... add public include paths required here ...
+				ModuleDirectory + "/Public",
+				ModuleDirectory + "/Public/WeatherEvent",
+				ModuleDirectory + "/Private",
+				ModuleDirectory + "/Private/WeatherEvent",
 			}
 			);
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				// ... add other private include paths required here ...
 			}
 			);
 		
@@ -28,7 +30,6 @@ public class Aether : ModuleRules
 				"Renderer",
 				"RenderCore",
 				"RHI",
-				// ... add other public dependencies that you statically link with here ...
 			}
 			);
 		
@@ -42,7 +43,6 @@ public class Aether : ModuleRules
 				"Slate",
 				"SlateCore",
 				"UnrealEd",
-				// ... add private dependencies that you statically link with here ...	
 			}
 			);
 		

@@ -3,7 +3,7 @@
  *		Copyright Technical Artist - Jiahao.Chan, Individual. All Rights Reserved.
  */
 
-#include "WeatherEvent/AetherWeatherEvent_Windy.h"
+#include "AetherWeatherEvent_Windy.h"
 
 #include "AetherAreaController.h"
 

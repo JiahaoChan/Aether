@@ -57,6 +57,12 @@ struct FAetherState
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Latitude;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Longitude;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float ProgressOfYear;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -50,5 +50,9 @@ public:
 		PendingContributeRainFall = 0.0f;
 	}
 	
-	void ConsumeEvent_Implementation(float DeltaTime, AAetherAreaController* AetherController) override;
+	virtual EWeatherEventExecuteState BlendIn_Implementation(float DeltaTime, AAetherAreaController* AetherController) override;
+	
+	virtual EWeatherEventExecuteState Run_Implementation(float DeltaTime, AAetherAreaController* AetherController) override;
+	
+	virtual EWeatherEventExecuteState BlendOut_Implementation(float DeltaTime, AAetherAreaController* AetherController) override;
 };

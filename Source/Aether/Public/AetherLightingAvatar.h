@@ -41,6 +41,8 @@ public:
 	
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
+	virtual void Destroyed() override;
+	
 public:
 	void UpdateLighting(const FAetherState& State);
 };

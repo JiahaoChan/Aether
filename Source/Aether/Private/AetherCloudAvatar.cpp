@@ -3,7 +3,7 @@
  *		Copyright Technical Artist - Jiahao.Chan, Individual. All Rights Reserved.
  */
 
-#include "AetherLightingAvatar.h"
+#include "AetherCloudAvatar.h"
 
 #include "Components/BillboardComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -11,7 +11,7 @@
 
 #include "AetherWorldSubsystem.h"
 
-AAetherLightingAvatar::AAetherLightingAvatar()
+AAetherCloudAvatar::AAetherCloudAvatar()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
@@ -21,25 +21,6 @@ AAetherLightingAvatar::AAetherLightingAvatar()
 	
 	USceneComponent* AvatarRootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("AvatarRoot"));
 	RootComponent = AvatarRootComponent;
-	
-	SkyDomeComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SkyDomeMesh"));
-	SkyDomeComponent->SetupAttachment(RootComponent);
-	SkyDomeComponent->SetCollisionProfileName(FName("NoCollision"));
-	SkyDomeComponent->SetGenerateOverlapEvents(false);
-	
-	SunLightComponent = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("SunLight"));
-	SunLightComponent->SetupAttachment(RootComponent);
-	SunLightComponent->SetRelativeLocation(FVector(0.0f, -200.0f, 300.0f));
-	SunLightComponent->SetRelativeRotation(FRotator(-45.0f, 0.0f, 0.0f));
-	
-	MoonLightComponent = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("MoonLight"));
-	MoonLightComponent->SetupAttachment(RootComponent);
-	MoonLightComponent->bAffectsWorld = false;
-	MoonLightComponent->SetRelativeLocation(FVector(0.0f, 200.0f, 200.0f));
-	
-	SkyLightComponent = CreateDefaultSubobject<USkyLightComponent>(TEXT("SkyLight"));
-	SkyLightComponent->SetupAttachment(RootComponent);
-	SkyLightComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
 	
 #if WITH_EDITORONLY_DATA
 	UBillboardComponent * SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
@@ -76,22 +57,22 @@ AAetherLightingAvatar::AAetherLightingAvatar()
 #endif // WITH_EDITORONLY_DATA
 }
 
-void AAetherLightingAvatar::BeginPlay()
+void AAetherCloudAvatar::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
     {
-    	Subsystem->RegisterLightingAvatar(this);
+    	Subsystem->RegisterCloudAvatar(this);
     }
 }
 
-void AAetherLightingAvatar::Tick(float DeltaTime)
+void AAetherCloudAvatar::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-void AAetherLightingAvatar::OnConstruction(const FTransform& Transform)
+void AAetherCloudAvatar::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	
@@ -102,24 +83,24 @@ void AAetherLightingAvatar::OnConstruction(const FTransform& Transform)
 		{
 			if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
 			{
-				Subsystem->RegisterLightingAvatar(this);
+				Subsystem->RegisterCloudAvatar(this);
 			}
 		}
 	}
 #endif
 }
 
-void AAetherLightingAvatar::Destroyed()
+void AAetherCloudAvatar::Destroyed()
 {
 	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
     {
-    	Subsystem->UnregisterLightingAvatar(this);
+    	Subsystem->UnregisterCloudAvatar(this);
     }
 	
 	Super::Destroyed();
 }
 
-void AAetherLightingAvatar::UpdateLighting(const FAetherState& State)
+void AAetherCloudAvatar::UpdateCloudLayers(const FAetherState& State)
 {
-	SunLightComponent->SetWorldRotation(State.SunLightDirection.Rotation());
+	
 }

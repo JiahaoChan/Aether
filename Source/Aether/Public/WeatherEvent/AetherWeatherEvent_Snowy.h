@@ -49,6 +49,4 @@ public:
 		ContributedSnowFall = 0.0f;
 		PendingContributeSnowFall = 0.0f;
 	}
-	
-	void ConsumeEvent_Implementation(float DeltaTime, AAetherAreaController* AetherController) override;
 };

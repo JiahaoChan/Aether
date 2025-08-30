@@ -7,6 +7,8 @@
 
 FAetherState::FAetherState()
 {
+	Latitude = 0.0f;
+	Longitude = 0.0f;
 	ProgressOfYear = 0.0f;
 	Month = EAetherMonth::January;
 	SunLightDirection = FVector::ZeroVector;
@@ -29,6 +31,8 @@ FAetherState::FAetherState()
 FString FAetherState::ToString() const
 {
     FString Result;
+	Result += FString("Latitude: ") + FString::SanitizeFloat(Latitude) + "\n";
+	Result += FString("Longitude: ") + FString::SanitizeFloat(Longitude) + "\n";
 	Result += FString("ProgressOfYear: ") + FString::SanitizeFloat(ProgressOfYear) + "\n";
 	Result += FString("SunLightDirection: ") + SunLightDirection.ToString() + "\n";
 	Result += FString("MoonLightDirection: ") + MoonLightDirection.ToString() + "\n";
@@ -50,6 +54,8 @@ FString FAetherState::ToString() const
 
 void FAetherState::Reset()
 {
+	Latitude = 0.0f;
+	Longitude = 0.0f;
 	ProgressOfYear = 0.0f;
 	Month = EAetherMonth::January;
 	SunLightDirection = FVector::ZeroVector;

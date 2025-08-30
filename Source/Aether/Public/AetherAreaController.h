@@ -54,10 +54,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides, ClampMin = "1"))
 	int32 DaysOfMonth;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides, ClampMin = "0.01"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
 	float DaytimeSpeedScale;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides, ClampMin = "0.01"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
 	float NightSpeedScale;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
@@ -82,10 +82,7 @@ protected:
 	FAetherState LastState;
 	
 	UPROPERTY(Transient, DuplicateTransient)
-	TArray<TObjectPtr<class UAetherWeatherEventInstance>> WarmingWeatherInstance;
-	
-	UPROPERTY(Transient, DuplicateTransient)
-	TArray<TObjectPtr<UAetherWeatherEventInstance>> RunningWeatherInstance;
+	TArray<TObjectPtr<class UAetherWeatherEventInstance>> ActiveWeatherInstance;
 	
 	// Cache
 	UPROPERTY(Transient, DuplicateTransient)
@@ -136,10 +133,23 @@ private:
 #if WITH_EDITOR
 	UFUNCTION(CallInEditor, Category = "Aether")
 	void CaptureTimeStamp();
+	
+	UFUNCTION(CallInEditor, Category = "Aether")
+	void SyncOtherControllerDielRhythm();
+	
+	UFUNCTION(CallInEditor, Category = "Aether")
+	void CorrectOtherControllerInitTimeStamp();
 #endif
 	
 public:
 	void TriggerWeatherEventImmediately(const FGameplayTag& EventTag);
+	void TriggerWeatherEventImmediately(const FGameplayTagContainer& EventTags);
+	void TriggerWeatherEventImmediately(const class UAetherWeatherEvent* EventClass);
+	
+	void CancelWeatherEventImmediately(const FGameplayTag& EventTag, bool bSkipBlendOut);
+	void CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags, bool bSkipBlendOut);
+	void CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass, bool bSkipBlendOut);
+	void CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance, bool bSkipBlendOut);
 	
 public:
 	FORCEINLINE const float& GetAffectRadius() const { return AffectRadius; }

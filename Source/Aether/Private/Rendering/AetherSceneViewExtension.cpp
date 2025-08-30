@@ -53,14 +53,14 @@ void FAetherSceneViewExtension::SetupView(FSceneViewFamily& InViewFamily, FScene
 		{
 			if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(RenderingWorld))
             {
-            	if (!Subsystem->CachedViewUniformShaderParameters)
+            	//if (!Subsystem->CachedViewUniformShaderParameters)
             	{
-            		Subsystem->CachedViewUniformShaderParameters = MakeUnique<FAetherViewParameters>();
+            		//Subsystem->CachedViewUniformShaderParameters = MakeUnique<FAetherViewParameters>();
             	}
-            	if (Subsystem->CachedViewUniformShaderParameters)
+            	//if (Subsystem->CachedViewUniformShaderParameters)
             	{
-            		Subsystem->CachedViewUniformShaderParameters.Get()->CustomParamA = 0.5f;
-            		Subsystem->CachedViewUniformShaderParameters.Get()->CustomParamB = FVector4f::Zero();
+            		//Subsystem->CachedViewUniformShaderParameters.Get()->CustomParamA = 0.5f;
+            		//Subsystem->CachedViewUniformShaderParameters.Get()->CustomParamB = FVector4f::Zero();
 
             		//CachedViewUniformShaderParameters = MakeUnique<FAetherViewParameters>(*Subsystem->CachedViewUniformShaderParameters);
             		//CachedViewUniformShaderParameters->CustomParamA = 
