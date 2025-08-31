@@ -51,6 +51,41 @@ enum class EWeatherTriggerSource: uint8
 	External				UMETA(DisplayName = "External"),
 };
 
+UENUM(BlueprintType)
+enum class EWeatherEventRangeType : uint8
+{
+	Global			UMETA(DisplayName = "Global"),
+	Local			UMETA(DisplayName = "Local"),
+};
+
+UENUM(BlueprintType)
+enum class EWeatherEventType : uint8
+{
+	Cloudy			UMETA(DisplayName = "Cloudy"),
+	Rainy			UMETA(DisplayName = "Rainy"),
+	Snowy			UMETA(DisplayName = "Snowy"),
+	Windy			UMETA(DisplayName = "Windy"),
+	Foggy			UMETA(DisplayName = "Foggy"),
+	Custom			UMETA(DisplayName = "Custom"),
+};
+
+UENUM(BlueprintType)
+enum class EWeatherEventExecuteState : uint8
+{
+	JustSpawned		UMETA(DisplayName = "JustSpawned"),
+	BlendingIn		UMETA(DisplayName = "BlendigIn"),
+	Running			UMETA(DisplayName = "Running"),
+	BlendingOut		UMETA(DisplayName = "BlendigIn"),
+	Finished		UMETA(DisplayName = "Finished"),
+};
+
+UENUM()
+enum class EWeatherEventDuration : uint8
+{
+	Instant		UMETA(DisplayName = "Instant"),
+	Duration	UMETA(DisplayName = "Duration"),
+};
+
 USTRUCT(BlueprintType)
 struct FAetherState
 {

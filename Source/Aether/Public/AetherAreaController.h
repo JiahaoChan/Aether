@@ -115,6 +115,8 @@ public:
 	virtual void Destroyed() override;
 	
 protected:
+	void Initialize();
+	
 	virtual void TickAetherController(float DeltaTime);
 	
 	void CalcControllerState_DielRhythm(float DeltaTime);
@@ -127,7 +129,18 @@ protected:
 	virtual void EvaluateWeatherEvent(float DeltaTime);
 	virtual void UpdateWeatherEvent(float DeltaTime);
 	
-	void Initialize();
+public:
+    void TriggerWeatherEventImmediately(const FGameplayTag& EventTag);
+    void TriggerWeatherEventImmediately(const FGameplayTagContainer& EventTags);
+    void TriggerWeatherEventImmediately(const class UAetherWeatherEvent* EventClass);
+    
+    void CancelWeatherEventImmediately(const FGameplayTag& EventTag);
+    void CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags);
+    void CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass);
+    void CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance);
+	
+private:
+	void SetWeatherInstanceState(UAetherWeatherEventInstance* InInstance, const EWeatherEventExecuteState& NewState);
 	
 private:
 #if WITH_EDITOR
@@ -140,16 +153,6 @@ private:
 	UFUNCTION(CallInEditor, Category = "Aether")
 	void CorrectOtherControllerInitTimeStamp();
 #endif
-	
-public:
-	void TriggerWeatherEventImmediately(const FGameplayTag& EventTag);
-	void TriggerWeatherEventImmediately(const FGameplayTagContainer& EventTags);
-	void TriggerWeatherEventImmediately(const class UAetherWeatherEvent* EventClass);
-	
-	void CancelWeatherEventImmediately(const FGameplayTag& EventTa);
-	void CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags);
-	void CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass);
-	void CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance);
 	
 public:
 	FORCEINLINE const float& GetAffectRadius() const { return AffectRadius; }
