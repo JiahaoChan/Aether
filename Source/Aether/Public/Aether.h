@@ -16,6 +16,4 @@ public:
 	
 private:
 	TSharedPtr<FSlateStyleSet> StyleSet;
-	
-	TSharedPtr<class FAetherSceneViewExtension, ESPMode::ThreadSafe> AetherSceneViewExtension;
 };

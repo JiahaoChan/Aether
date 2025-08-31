@@ -10,8 +10,5 @@
 UAetherWeatherEventInstance* UAetherWeatherEvent_Windy::MakeInstance_Native(AAetherAreaController* Outer)
 {
 	UAetherWeatherEventInstance_Windy* Instance = NewObject<UAetherWeatherEventInstance_Windy>(Outer);
-	Instance->EventClass = this;
-	Instance->State = EWeatherEventExecuteState::JustSpawned;
-	Instance->CurrentStateLastTime = 0.0f;
 	return Instance;
 }

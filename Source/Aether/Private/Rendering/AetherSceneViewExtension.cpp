@@ -5,8 +5,10 @@
 
 #include "Rendering/AetherSceneViewExtension.h"
 
-#include "AetherWorldSubsystem.h"
 #include "RenderGraphBuilder.h"
+//#include "Runtime/Renderer/Private/SceneRendering.h"
+
+#include "AetherWorldSubsystem.h"
 
 /*
 // 在包含头文件之后，IMPLEMENT宏之前，添加一个静态变量和初始化函数
@@ -87,4 +89,33 @@ void FAetherSceneViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBui
 {
 	//FUniformBufferStaticSlot Slot = FUniformBufferStaticSlotRegistry::Get().FindSlotByName(FName("Aether"));
 	//GraphBuilder.RHICmdList.SetStaticUniformBuffer(Slot, AetherViewUniformBuffer.GetReference());
+}
+
+void FAetherSceneViewExtension::PostRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
+{
+	/*
+	if (const FSceneViewFamily* ViewFamily = InView.Family)
+	{
+		if (FSceneRenderer* SceneRenderer = dynamic_cast<FSceneRenderer*>(ViewFamily->GetSceneRenderer()))
+		{
+			FRHITexture* TextureRHI = ViewFamily->RenderTarget->GetRenderTargetTexture();
+            FRDGTextureRef Texture = GraphBuilder.FindExternalTexture(TextureRHI);
+            
+            FCanvas& Canvas = *FCanvas::Create(GraphBuilder, Texture, nullptr, ViewFamily->Time, ViewFamily->GetFeatureLevel(), ViewFamily->DebugDPIScale);
+            Canvas.SetRenderTargetRect(InView.UnconstrainedViewRect);
+            
+            FScreenMessageWriter Writer(Canvas, 150.0f);
+			
+            if (1)
+            {
+            	static const FText StateText = NSLOCTEXT("Aether", "RenderingFrozen", "Rendering frozen...");
+            	Writer.DrawLine(StateText, 10, FLinearColor(0.8, 1.0, 0.2, 1.0));
+            }
+			
+            SceneRenderer->OnGetOnScreenMessages.Broadcast(Writer);
+            
+            Canvas.Flush_RenderThread(GraphBuilder, false);
+		}
+	}
+	*/
 }

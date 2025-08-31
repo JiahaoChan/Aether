@@ -5,6 +5,8 @@
 
 #include "AetherWeatherEvent.h"
 
+#include "Kismet/KismetMathLibrary.h"
+
 #include "AetherAreaController.h"
 
 UAetherWeatherEvent::UAetherWeatherEvent()
@@ -47,11 +49,20 @@ void UAetherWeatherEvent::PostEditChangeProperty(FPropertyChangedEvent& Property
 
 UAetherWeatherEventInstance* UAetherWeatherEvent::MakeInstance_Route(AAetherAreaController* Outer)
 {
+	UAetherWeatherEventInstance* Instance = nullptr;
 	if (bMakeInstanceHasBlueprintImpl)
 	{
-		return K2_MakeInstance(Outer);
+		Instance =  K2_MakeInstance(Outer);
 	}
-	return MakeInstance_Native(Outer);
+	else
+	{
+		Instance = MakeInstance_Native(Outer);
+	}
+	Instance->EventClass = this;
+	Instance->Duration = DurationMin > 0.0f ? UKismetMathLibrary::RandomFloatInRangeFromStream(UKismetMathLibrary::MakeRandomStream(0), DurationMin, DurationMax) : DurationMax;
+	Instance->BlendInTime = BlendInTimeMin > 0.0f ? UKismetMathLibrary::RandomFloatInRangeFromStream(UKismetMathLibrary::MakeRandomStream(0), BlendInTimeMin, BlendInTimeMax) : BlendInTimeMax;
+	Instance->BlendOutTime = BlendOutTimeMin > 0.0f ? UKismetMathLibrary::RandomFloatInRangeFromStream(UKismetMathLibrary::MakeRandomStream(0), BlendOutTimeMin, BlendOutTimeMax) : BlendOutTimeMax;
+	return Instance;
 }
 
 EWeatherEventExecuteState UAetherWeatherEventInstance::BlendIn_Implementation(float DeltaTime, AAetherAreaController* AetherController)

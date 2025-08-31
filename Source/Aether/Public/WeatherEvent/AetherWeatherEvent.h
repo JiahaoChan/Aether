@@ -157,7 +157,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
 	EWeatherEventDuration DurationType;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather", meta = (EditCondition = "DurationType == EWeatherEventDuration::Duration", EditConditionHides))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather", meta = (EditCondition = "DurationType == EWeatherEventDuration::Duration", EditConditionHides, ClampMin = "0.1"))
 	float DurationMax;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather", meta = (EditCondition = "DurationType == EWeatherEventDuration::Duration", EditConditionHides))
@@ -224,7 +224,7 @@ public:
 	UAetherWeatherEventInstance()
 	{
 		EventClass = nullptr;
-		State = EWeatherEventExecuteState::None;
+		State = EWeatherEventExecuteState::Finished;
 		CurrentStateLastTime = 0.0f;
 		Duration = 0.0f;
 		BlendInTime = 0.0f;

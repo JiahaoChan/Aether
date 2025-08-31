@@ -96,6 +96,15 @@ void UAetherWorldSubsystem::Tick(float DeltaTime)
 	UpdateSystemState();
 	
 	UpdateWorld();
+	
+	/*
+	FDelegateHandle Handle = FCoreDelegates::OnGetOnScreenMessages.AddLambda([](TMultiMap<FCoreDelegates::EOnScreenMessageSeverity, FText >& OutMessages)
+	{
+		OutMessages.Add(
+			FCoreDelegates::EOnScreenMessageSeverity::Info,
+			FText(NSLOCTEXT("Aether", "AetherTest", "AAAAAAAAAAAAAAA")));
+	});
+	*/
 }
 
 void UAetherWorldSubsystem::RegisterController(AAetherAreaController* InController)

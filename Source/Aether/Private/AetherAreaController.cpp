@@ -233,7 +233,7 @@ void AAetherAreaController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+#if UE_ENABLE_DEBUG_DRAWING
 	if (CVarVisualizeAetherControllerState.GetValueOnAnyThread() != 0)
 	{
 		FString DebugString = CurrentState.ToString();
@@ -377,6 +377,8 @@ void AAetherAreaController::Initialize()
 	CurrentState.ProgressOfYear = FMath::Frac(CurrentState.ProgressOfYear);
 	
 	CalcControllerState_DielRhythm(0.0f);
+	
+	TestCount = 0;
 }
 
 void AAetherAreaController::TickAetherController(float DeltaTime)
@@ -386,7 +388,7 @@ void AAetherAreaController::TickAetherController(float DeltaTime)
 	// Cache first.
 	LastState = CurrentState;
 	
-	float ActualDeltaTime = SinceLastTickTime + DeltaTime;
+	float ActualDeltaTime = DeltaTime;
 	SinceLastTickTime = DeltaTime;
 	
 #if WITH_EDITORONLY_DATA
@@ -474,14 +476,42 @@ void AAetherAreaController::EvaluateWeatherEvent(float DeltaTime)
 	
 	// Check if blocking or canceling each other.
 	TArray<int32> TriggerEventIndexList;
+	for (const int32& Index: DeferredTriggerEventIndexList)
+	{
+		check(PossibleWeatherEvents.IsValidIndex(Index));
+		const FWeatherEventDescription& EventDescription = PossibleWeatherEvents[Index];
+		bool bShouldTrigger = true;
+		for (const int32& OtherIndex: DeferredTriggerEventIndexList)
+		{
+			check(PossibleWeatherEvents.IsValidIndex(OtherIndex));
+			if (Index != OtherIndex)
+			{
+				if (EventDescription.Event.Get()->EventTag.HasAny(PossibleWeatherEvents[OtherIndex].Event->BlockWeatherEventsWithTag))
+				{
+					bShouldTrigger = false;
+					break;
+				}
+				if (EventDescription.Event.Get()->EventTag.HasAny(PossibleWeatherEvents[OtherIndex].Event->CancelWeatherEventsWithTag))
+				{
+					bShouldTrigger = false;
+					break;
+				}
+			}
+		}
+		if (bShouldTrigger)
+		{
+			TriggerEventIndexList.Add(Index);
+		}
+	}
+	DeferredTriggerEventIndexList.Reset();
 	
-	
-	// Todo
-	// Check if blocked or canceled by active instance.
-
-	// Todo: incoming event cancel active event
 	FGameplayTagContainer DeferredCancelEventTags;
-	
+	for (const int32& Index: TriggerEventIndexList)
+	{
+		check(PossibleWeatherEvents.IsValidIndex(Index));
+		const FWeatherEventDescription& EventDescription = PossibleWeatherEvents[Index];
+		DeferredCancelEventTags.AppendTags(EventDescription.Event->CancelWeatherEventsWithTag);
+	}
 	
 	// Cancel
 	TArray<UAetherWeatherEventInstance*> DeferredCancelEventInstances;
@@ -505,20 +535,17 @@ void AAetherAreaController::EvaluateWeatherEvent(float DeltaTime)
 	}
 	
 	// Try to trigger
-	for (const int32& Index : DeferredTriggerEventIndexList)
+	for (const int32& Index : TriggerEventIndexList)
 	{
-		check(PossibleWeatherEvents.IsValidIndex(Index));
-		UAetherWeatherEventInstance* NewInstance = PossibleWeatherEvents[Index].Event->MakeInstance_Route(this);
-		//if (CurrentState.RunningWeatherTags.HasAllExact(PossibleWeatherEvents[Index].Event->PreConditionWeatherEventsWithTag))
+		if (TestCount == 0)
 		{
-			//NewInstance->SetState(EWeatherEventExecuteState::BlendingIn, this);
-			//RunningWeatherInstance.Add(NewInstance);
-		}
-		//else
-		{
-			// Todo: 进一步触发?
-			//NewInstance->SetState(EWeatherEventExecuteState::Warming, this);
-			//WarmingWeatherInstance.Add(NewInstance);
+			check(PossibleWeatherEvents.IsValidIndex(Index));
+            UAetherWeatherEventInstance* NewInstance = PossibleWeatherEvents[Index].Event->MakeInstance_Route(this);
+            NewInstance->State = EWeatherEventExecuteState::JustSpawned;
+            NewInstance->CurrentStateLastTime = 0.0f;
+            ActiveWeatherInstance.Add(NewInstance);
+			
+			TestCount = 1;
 		}
 	}
 	
@@ -557,6 +584,10 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						else
 						{
 							Instance->CurrentStateLastTime += DeltaTime;
+							if (Instance->CurrentStateLastTime > Instance->BlendInTime)
+							{
+								SetWeatherInstanceState(Instance, EWeatherEventExecuteState::Running);
+							}
 						}
 						break;
 					}
@@ -570,6 +601,10 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						else
 						{
 							Instance->CurrentStateLastTime += DeltaTime;
+							if (Instance->CurrentStateLastTime > Instance->Duration)
+							{
+								SetWeatherInstanceState(Instance, EWeatherEventExecuteState::BlendingOut);
+							}
 						}
 						break;
 					}
@@ -583,6 +618,10 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						else
 						{
 							Instance->CurrentStateLastTime += DeltaTime;
+							if (Instance->CurrentStateLastTime > Instance->BlendOutTime)
+							{
+								SetWeatherInstanceState(Instance, EWeatherEventExecuteState::Finished);
+							}
 						}
 						break;
 					}

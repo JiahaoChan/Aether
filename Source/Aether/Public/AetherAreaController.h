@@ -94,6 +94,8 @@ protected:
 	
 	float SinceLastTickTime;
 	
+	int32 TestCount = 0;
+	
 public:
 	AAetherAreaController();
 	

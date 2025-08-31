@@ -31,4 +31,26 @@ public:
 	//virtual void PreRenderBasePass_RenderThread(FRDGBuilder& GraphBuilder, bool bDepthBufferIsPopulated) override;
 	
 	//virtual void PostRenderBasePassMobile_RenderThread(FRHICommandList& RHICmdList, FSceneView& InView) override;
+	
+	virtual void PostRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
+	
+private:
+	inline static TSharedPtr<FAetherSceneViewExtension, ESPMode::ThreadSafe> Instance;
+	
+	struct FStaticConstructor
+	{
+		FStaticConstructor()
+		{
+			FCoreDelegates::OnPostEngineInit.AddLambda([]()
+			{ 
+				Instance = FSceneViewExtensions::NewExtension<FAetherSceneViewExtension>();
+			});
+			FCoreDelegates::OnEnginePreExit.AddLambda([]()
+			{ 
+				Instance = nullptr;
+			});
+		}
+	};
+	
+	static inline FStaticConstructor StaticConstructor;
 };
