@@ -31,7 +31,7 @@ EWeatherEventExecuteState UAetherWeatherEventInstance_Rainy::BlendIn_Implementat
 	
 	if (AetherController->GetCurrentState().AirTemperature < -5.0f)
 	{
-		AetherController->CancelWeatherEventImmediately(this, false);
+		AetherController->CancelWeatherEventImmediately(this);
 		return EWeatherEventExecuteState::BlendingIn;
 	}
 	

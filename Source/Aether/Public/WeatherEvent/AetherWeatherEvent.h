@@ -173,7 +173,7 @@ class UAetherWeatherEvent : public UPrimaryDataAsset
 	
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
-	FGameplayTag EventTag;
+	FGameplayTagContainer EventTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
 	FGameplayTagContainer BlockWeatherEventsWithTag;

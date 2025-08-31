@@ -9,7 +9,7 @@
 
 UAetherWeatherEvent::UAetherWeatherEvent()
 {
-	EventTag = FGameplayTag::EmptyTag;
+	EventTag = FGameplayTagContainer::EmptyContainer;
 	CancelWeatherEventsWithTag = FGameplayTagContainer::EmptyContainer;
 	BlockWeatherEventsWithTag = FGameplayTagContainer::EmptyContainer;
 	EventRange = EWeatherEventRangeType::Global;

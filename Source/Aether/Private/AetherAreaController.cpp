@@ -438,35 +438,52 @@ void AAetherAreaController::EvaluateWeatherEvent(float DeltaTime)
 		{
 			continue;
 		}
-		if (RunningWeatherTags.HasTagExact(EventDescription.Event->EventTag))
+		if (EventDescription.Event->EventTag.HasAnyExact(ActiveWeatherTags))
 		{
 			// Never trigger the same weather event twice in a period of time.
 			continue;
 		}
-		if (BlockingWeatherTags.HasTag(EventDescription.Event->EventTag))
+		if (EventDescription.Event->EventTag.HasAny(BlockingWeatherTags))
 		{
 			// Check current running event if blocks the incoming event.
 			continue;
 		}
-		if (EventDescription.HappeningMonthsProbability.FindRef(CurrentState.Month, 0.0f) == 0.0f)
+		if (EventDescription.HappeningMonthsProbability.FindRef(CurrentState.Month, 0.0f) <= UE_KINDA_SMALL_NUMBER)
 		{
 			continue;
 		}
 		DeferredTriggerEventIndexList.Add(i);
 	}
 	
-	// Check if blocking each other.
+	// Check if blocking or canceling each other.
+	TArray<int32> TriggerEventIndexList;
 	
 	
-	
-	TArray<UAetherWeatherEventInstance*> DeferredCancelEventInstances;
+	// Todo
+	// Check if blocked or canceled by active instance.
+
+	// Todo: incoming event cancel active event
+	FGameplayTagContainer DeferredCancelEventTags;
+
 	
 	// Cancel
+	TArray<UAetherWeatherEventInstance*> DeferredCancelEventInstances;
+	for (UAetherWeatherEventInstance* Instance : ActiveWeatherInstance)
+	{
+		if (Instance && Instance->State == EWeatherEventExecuteState::Running)
+		{
+			check(Instance->EventClass);
+			if (Instance->EventClass->EventTag.HasAny(DeferredCancelEventTags))
+			{
+				DeferredCancelEventInstances.Add(Instance);
+			}
+		}
+	}
 	for (UAetherWeatherEventInstance* Instance : DeferredCancelEventInstances)
 	{
 		if (Instance)
 		{
-			CancelWeatherEventImmediately(Instance, false);
+			CancelWeatherEventImmediately(Instance);
 		}
 	}
 	
@@ -500,17 +517,38 @@ void AAetherAreaController::EvaluateWeatherEvent(float DeltaTime)
 
 void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 {
+	auto SetNewState = [this](UAetherWeatherEventInstance* InInstance, const EWeatherEventExecuteState& NewState)
+	{
+		if (!InInstance || InInstance->State == NewState)
+		{
+			return;
+		}
+		check(InInstance->EventClass);
+		if (InInstance->State == EWeatherEventExecuteState::JustSpawned && NewState != EWeatherEventExecuteState::Finished)
+		{
+			ActiveWeatherTags.AppendTags(InInstance->EventClass->EventTag);
+			BlockingWeatherTags.AppendTags(InInstance->EventClass->BlockWeatherEventsWithTag);
+		}
+		else if (NewState == EWeatherEventExecuteState::Finished)
+		{
+			ActiveWeatherTags.RemoveTags(InInstance->EventClass->EventTag);
+			BlockingWeatherTags.RemoveTags(InInstance->EventClass->BlockWeatherEventsWithTag);
+		}
+		InInstance->State = NewState;
+		InInstance->CurrentStateLastTime = 0.0f;
+	};
+	
 	for (UAetherWeatherEventInstance* Instance : ActiveWeatherInstance)
 	{
 		if (Instance)
 		{
+			check(Instance->EventClass);
 			const EWeatherEventExecuteState LastExecuteState = Instance->State;
 			switch (LastExecuteState)
 			{
 				case EWeatherEventExecuteState::JustSpawned:
 					{
-						Instance->State = EWeatherEventExecuteState::BlendingIn;
-						Instance->CurrentStateLastTime = 0.0f;
+						SetNewState(Instance, EWeatherEventExecuteState::BlendingIn);
 						break;
 					}
 				case EWeatherEventExecuteState::BlendingIn:
@@ -518,13 +556,7 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						const EWeatherEventExecuteState NewState = Instance->BlendIn(DeltaTime, this);
 						if (LastExecuteState != NewState)
 						{
-							Instance->CurrentStateLastTime = 0.0f;
-							Instance->State = NewState;
-							if (NewState == EWeatherEventExecuteState::Running)
-							{
-								RunningWeatherTags.AddTag(Instance->EventClass->EventTag);
-								BlockingWeatherTags.AppendTags(Instance->EventClass->BlockWeatherEventsWithTag);
-							}
+							SetNewState(Instance, NewState);
 						}
 						else
 						{
@@ -537,10 +569,7 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						const EWeatherEventExecuteState NewState = Instance->Run(DeltaTime, this);
 						if (LastExecuteState != NewState)
 						{
-							Instance->CurrentStateLastTime = 0.0f;
-							Instance->State = NewState;
-							RunningWeatherTags.RemoveTag(Instance->EventClass->EventTag);
-							BlockingWeatherTags.RemoveTags(Instance->EventClass->BlockWeatherEventsWithTag);
+							SetNewState(Instance, NewState);
 						}
 						else
 						{
@@ -553,8 +582,7 @@ void AAetherAreaController::UpdateWeatherEvent(float DeltaTime)
 						const EWeatherEventExecuteState NewState = Instance->BlendOut(DeltaTime, this);
 						if (LastExecuteState != NewState)
 						{
-							Instance->CurrentStateLastTime = 0.0f;
-							Instance->State = NewState;
+							SetNewState(Instance, NewState);
 						}
 						else
 						{
@@ -577,7 +605,7 @@ void AAetherAreaController::Initialize()
 	CurrentState.Longitude = Longitude;
 	LastState = CurrentState;
 	ActiveWeatherInstance.Reset();
-	RunningWeatherTags.Reset();
+	ActiveWeatherTags.Reset();
 	BlockingWeatherTags.Reset();
 	SinceLastTickTime = 0.0f;
 	
@@ -625,22 +653,22 @@ void AAetherAreaController::TriggerWeatherEventImmediately(const UAetherWeatherE
 	
 }
 
-void AAetherAreaController::CancelWeatherEventImmediately(const FGameplayTag& EventTag, bool bSkipBlendOut)
+void AAetherAreaController::CancelWeatherEventImmediately(const FGameplayTag& EventTag)
 {
 	
 }
 
-void AAetherAreaController::CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags, bool bSkipBlendOut)
+void AAetherAreaController::CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags)
 {
 	
 }
 
-void AAetherAreaController::CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass, bool bSkipBlendOut)
+void AAetherAreaController::CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass)
 {
 	
 }
 
-void AAetherAreaController::CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance, bool bSkipBlendOut)
+void AAetherAreaController::CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance)
 {
 	if (!EventInstance)
 	{
@@ -648,17 +676,11 @@ void AAetherAreaController::CancelWeatherEventImmediately(UAetherWeatherEventIns
 	}
 	if (EventInstance->State == EWeatherEventExecuteState::Running)
 	{
-		RunningWeatherTags.RemoveTag(EventInstance->EventClass->EventTag);
+		check(EventInstance->EventClass);
+		RunningWeatherTags.RemoveTags(EventInstance->EventClass->EventTag);
 		BlockingWeatherTags.RemoveTags(EventInstance->EventClass->BlockWeatherEventsWithTag);
 	}
-	if (bSkipBlendOut)
-	{
-		EventInstance->State = EWeatherEventExecuteState::Finished;
-	}
-	else
-	{
-		EventInstance->State = EWeatherEventExecuteState::BlendingOut;
-	}
+	EventInstance->State = EWeatherEventExecuteState::BlendingOut;
 	EventInstance->CurrentStateLastTime = 0.0f;
 }
 

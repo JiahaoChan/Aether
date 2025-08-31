@@ -86,7 +86,7 @@ protected:
 	
 	// Cache
 	UPROPERTY(Transient, DuplicateTransient)
-	FGameplayTagContainer RunningWeatherTags;
+	FGameplayTagContainer ActiveWeatherTags;
 	
 	// Cache
 	UPROPERTY(Transient, DuplicateTransient)
@@ -146,10 +146,10 @@ public:
 	void TriggerWeatherEventImmediately(const FGameplayTagContainer& EventTags);
 	void TriggerWeatherEventImmediately(const class UAetherWeatherEvent* EventClass);
 	
-	void CancelWeatherEventImmediately(const FGameplayTag& EventTag, bool bSkipBlendOut);
-	void CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags, bool bSkipBlendOut);
-	void CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass, bool bSkipBlendOut);
-	void CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance, bool bSkipBlendOut);
+	void CancelWeatherEventImmediately(const FGameplayTag& EventTa);
+	void CancelWeatherEventImmediately(const FGameplayTagContainer& EventTags);
+	void CancelWeatherEventImmediately(const UAetherWeatherEvent* EventClass);
+	void CancelWeatherEventImmediately(UAetherWeatherEventInstance* EventInstance);
 	
 public:
 	FORCEINLINE const float& GetAffectRadius() const { return AffectRadius; }
