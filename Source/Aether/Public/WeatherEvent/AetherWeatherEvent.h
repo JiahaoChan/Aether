@@ -119,7 +119,7 @@ struct FWeatherEventDescription
 #endif
 	
 #if WITH_EDITOR
-	void FixProbability()
+	void ClampProbability()
 	{
 		for (auto It = HappeningMonthsProbability.CreateIterator(); It; ++It)
 		{
@@ -127,6 +127,16 @@ struct FWeatherEventDescription
 		}
 	}
 #endif
+	
+	bool operator==(const FWeatherEventDescription& Other) const
+	{
+		// Todo: MapEquals
+#if WITH_EDITORONLY_DATA
+		return Event == Other.Event && TriggerSource == Other.TriggerSource && HappeningMonthDisplay == Other.HappeningMonthDisplay;
+#else
+		return Event == Other.Event && TriggerSource == Other.TriggerSource;
+#endif
+	}
 };
 
 /* EventClass */
@@ -139,7 +149,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
 	FGameplayTagContainer EventTag;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather", meta = (EditCondition = "DurationType == EWeatherEventDuration::Duration", EditConditionHides))
 	FGameplayTagContainer BlockWeatherEventsWithTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weather")
@@ -184,16 +194,24 @@ public:
 	
 	UAetherWeatherEvent();
 	
+	//~ Begin UObject Interface
+	virtual void PreSave(FObjectPreSaveContext SaveContext) override;
+	virtual void PostLoad() override;
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+	//~ End UObject Interface
 	
+	//~ Begin UAetherWeatherEvent Interface
 	class UAetherWeatherEventInstance* MakeInstance_Route(class AAetherAreaController* Outer);
 	
 	virtual UAetherWeatherEventInstance* MakeInstance_Native(AAetherAreaController* Outer) { return nullptr; }
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Aether Weather Event", DisplayName = "MakeInstance")
 	UAetherWeatherEventInstance* K2_MakeInstance(AAetherAreaController* Outer);
+	
+	virtual TArray<FWeatherEventDescription> GetInnerWeatherEventDescriptions() { return {}; }
+	//~ End UAetherWeatherEvent Interface
 };
 
 /* EventInstance */

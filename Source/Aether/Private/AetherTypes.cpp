@@ -18,6 +18,7 @@ FAetherState::FAetherState()
 	RainFall = 0.0f;
 	SnowFall = 0.0f;
 	SurfaceRainRemain = 0.0f;
+	PuddleRainRemain = 0.0f;
 	SurfaceSnowDepth = 0.0f;
 	WindData = FVector4f::Zero();
 	DustIntensity = 0.0f;
@@ -26,6 +27,8 @@ FAetherState::FAetherState()
 	Time = 0.0;
 	SunElevation = 0.0f;
 	SunAzimuth = 0.0f;
+	
+	TestValue = 0.0f;
 }
 
 FString FAetherState::ToString() const
@@ -41,6 +44,7 @@ FString FAetherState::ToString() const
 	Result += FString("RainFall: ") + FString::SanitizeFloat(RainFall) + "\n";
 	Result += FString("SnowFall: ") + FString::SanitizeFloat(SnowFall) + "\n";
 	Result += FString("SurfaceRainRemain: ") + FString::SanitizeFloat(SurfaceRainRemain) + "\n";
+	Result += FString("PuddleRainRemain: ") + FString::SanitizeFloat(PuddleRainRemain) + "\n";
 	Result += FString("SurfaceSnowDepth: ") + FString::SanitizeFloat(SurfaceSnowDepth) + "\n";
 	Result += FString("WindData: ") + WindData.ToString() + "\n";
 	Result += FString("DustIntensity: ") + FString::SanitizeFloat(DustIntensity) + "\n";
@@ -49,6 +53,8 @@ FString FAetherState::ToString() const
 	Result += FString("Time: ") + FString::SanitizeFloat(Time) + "\n";
 	Result += FString("SunElevation: ") + FString::SanitizeFloat(SunElevation) + "\n";
 	Result += FString("SunAzimuth: ") + FString::SanitizeFloat(SunAzimuth) + "\n";
+	
+	Result += FString("TestValue: ") + FString::SanitizeFloat(TestValue) + "\n";
 	return Result;
 }
 
@@ -65,6 +71,7 @@ void FAetherState::Reset()
 	RainFall = 0.0f;
 	SnowFall = 0.0f;
 	SurfaceRainRemain = 0.0f;
+	PuddleRainRemain = 0.0f;
 	SurfaceSnowDepth = 0.0f;
 	WindData = FVector4f::Zero();
 	DustIntensity = 0.0f;
@@ -73,6 +80,8 @@ void FAetherState::Reset()
 	Time = 0.0;
 	SunElevation = 0.0f;
 	SunAzimuth = 0.0f;
+	
+	TestValue = 0.0f;
 }
 
 void FAetherState::Normalize()
@@ -89,9 +98,14 @@ FAetherState FAetherState::operator*(float Operand)
 	Result.SunLightDirection = SunLightDirection * Operand;
 	Result.MoonLightDirection = MoonLightDirection * Operand;
 	
+	Result.SurfaceRainRemain = SurfaceRainRemain * Operand;
+	Result.PuddleRainRemain = PuddleRainRemain * Operand;
+	
 	Result.Time = Time * Operand;
 	Result.SunElevation = SunElevation * Operand;
 	Result.SunAzimuth = SunAzimuth * Operand;
+	
+	Result.TestValue = TestValue * Operand;
 	return Result;
 }
 
@@ -106,6 +120,7 @@ FAetherState FAetherState::operator+(const FAetherState& Another)
 	Result.RainFall = RainFall + Another.RainFall;
 	Result.SnowFall = SnowFall + Another.SnowFall;
 	Result.SurfaceRainRemain = SurfaceRainRemain + Another.SurfaceRainRemain;
+	Result.PuddleRainRemain = PuddleRainRemain + Another.PuddleRainRemain;
 	Result.SurfaceSnowDepth = SurfaceSnowDepth + Another.SurfaceSnowDepth;
 	Result.WindData = WindData + Another.WindData;
 	Result.DustIntensity = DustIntensity + Another.DustIntensity;
@@ -114,5 +129,7 @@ FAetherState FAetherState::operator+(const FAetherState& Another)
 	Result.Time = Time + Another.Time;
 	Result.SunElevation = SunElevation + Another.SunElevation;
 	Result.SunAzimuth = SunAzimuth + Another.SunAzimuth;
+	
+	Result.TestValue = TestValue + Another.TestValue;
 	return Result;
 }

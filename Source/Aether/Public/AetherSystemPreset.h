@@ -36,7 +36,7 @@ public:
 	
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	virtual void PreSave(FObjectPreSaveContext SaveContext) override;
 #endif
+	virtual void PreSave(FObjectPreSaveContext SaveContext) override;
 	virtual void PostLoad() override;
 };

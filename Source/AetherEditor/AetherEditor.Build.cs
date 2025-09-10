@@ -5,20 +5,16 @@
 
 using UnrealBuildTool;
 
-public class Aether : ModuleRules
+public class AetherEditor : ModuleRules
 {
-	public Aether(ReadOnlyTargetRules Target) : base(Target)
+	public AetherEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
 				ModuleDirectory + "/Public",
-				ModuleDirectory + "/Public/Avatar",
-				ModuleDirectory + "/Public/WeatherEvent",
 				ModuleDirectory + "/Private",
-				ModuleDirectory + "/Private/Avatar",
-				ModuleDirectory + "/Private/WeatherEvent",
 			}
 			);
 		
@@ -32,23 +28,14 @@ public class Aether : ModuleRules
 			{
 				"Core",
 				"Engine",
-				//"Renderer",
-				//"RenderCore",
-				//"RHI",
 			}
 			);
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"Aether",
 				"CoreUObject",
-				"DeveloperSettings",
-				"GameplayTags",
-				"Niagara",
-				"Projects",
-				"Renderer",
-				"RenderCore",
-				"RHI",
 				"Slate",
 				"SlateCore",
 				"UnrealEd",

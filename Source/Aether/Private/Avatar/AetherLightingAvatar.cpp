@@ -42,11 +42,10 @@ AAetherLightingAvatar::AAetherLightingAvatar()
 	SkyLightComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
 	
 #if WITH_EDITORONLY_DATA
-	UBillboardComponent * SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
+	UBillboardComponent* SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
 	
 	if (!IsRunningCommandlet())
 	{
-		// Structure to hold one-time initialization
 		struct FConstructorStatics
 		{
 			ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteTextureObject;
@@ -79,11 +78,6 @@ AAetherLightingAvatar::AAetherLightingAvatar()
 void AAetherLightingAvatar::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-    {
-    	Subsystem->RegisterLightingAvatar(this);
-    }
 }
 
 void AAetherLightingAvatar::Tick(float DeltaTime)
@@ -91,35 +85,7 @@ void AAetherLightingAvatar::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AAetherLightingAvatar::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-	
-#if WITH_EDITOR
-	if (const UWorld* World = GetWorld())
-	{
-		if (World->WorldType == EWorldType::Type::Editor)
-		{
-			if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-			{
-				Subsystem->RegisterLightingAvatar(this);
-			}
-		}
-	}
-#endif
-}
-
-void AAetherLightingAvatar::Destroyed()
-{
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-    {
-    	Subsystem->UnregisterLightingAvatar(this);
-    }
-	
-	Super::Destroyed();
-}
-
-void AAetherLightingAvatar::UpdateLighting(const FAetherState& State)
+void AAetherLightingAvatar::UpdateFromSystemState(const FAetherState& State)
 {
 	SunLightComponent->SetWorldRotation(State.SunLightDirection.Rotation());
 }

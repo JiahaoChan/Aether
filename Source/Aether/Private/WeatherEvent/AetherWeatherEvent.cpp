@@ -6,6 +6,7 @@
 #include "AetherWeatherEvent.h"
 
 #include "Kismet/KismetMathLibrary.h"
+#include "UObject/ObjectSaveContext.h"
 
 #include "AetherAreaController.h"
 
@@ -37,6 +38,26 @@ UAetherWeatherEvent::UAetherWeatherEvent()
 		{
 			bMakeInstanceHasBlueprintImpl = IsImplementedInBlueprint(Function);
 		}
+	}
+}
+
+void UAetherWeatherEvent::PreSave(FObjectPreSaveContext SaveContext)
+{
+	Super::PreSave(SaveContext);
+	
+	if (DurationType == EWeatherEventDuration::Instant)
+	{
+		BlockWeatherEventsWithTag.Reset();
+	}
+}
+
+void UAetherWeatherEvent::PostLoad()
+{
+	Super::PostLoad();
+	
+	if (DurationType == EWeatherEventDuration::Instant)
+	{
+		BlockWeatherEventsWithTag.Reset();
 	}
 }
 

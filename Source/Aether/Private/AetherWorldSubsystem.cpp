@@ -13,16 +13,169 @@
 #include "AetherCloudAvatar.h"
 #include "AetherLightingAvatar.h"
 #include "AetherPluginSettings.h"
+#include "AetherSettingsInfo.h"
 #include "AetherStats.h"
-#include "Rendering/AetherSceneViewExtension.h"
+
+#if UE_ENABLE_DEBUG_DRAWING
+static TAutoConsoleVariable<int32> CVarVisualizeAetherState(
+	TEXT("a.VisualizeAetherState"),
+	0,
+	TEXT("Visualize the State of the Aether System."),
+	ECVF_Cheat);
+
+static TAutoConsoleVariable<int32> CVarVisualizeAetherControllerWeight(
+	TEXT("a.VisualizeAetherControllerWeight"),
+	0,
+	TEXT("Visualize the distance-based weight of Aether Controllers."),
+	ECVF_Cheat);
+
+static TAutoConsoleVariable<int32> CVarVisualizeAetherControllerPoint(
+	TEXT("a.VisualizeAetherControllerPoint"),
+	0,
+	TEXT("Visualize the location point of Aether Controllers."),
+	ECVF_Cheat);
+#endif
+
+#define SECONDS_PER_HOUR 3600.0f
+#define SECONDS_PER_DAY_EARTH 86400.0f
+#define SECONDS_PER_YEAR_EARTH 31536000.0f
+#define DAYS_PER_YEAR_EARTH 365
+
+#define OBLIQUITY 23.45f				// 黄赤交角（度）
+#define STANDARD_MERIDIAN 120.0f		// 标准时区经度（东八区）
+#define DEG_TO_HOUR 15.0f				// 度到小时转换系数（1小时=15度）
+
+/**
+ * 计算指定地理位置和时间的太阳位置（高度角、方位角）及极地条件
+ * @param Latitude 纬度（度），北纬为正
+ * @param Longitude 经度（度），东经为正
+ * @param TimeStampOfEarthDay 当日累计秒数（0~86400）
+ * @param TimeStampOfEarthYear 当年累计秒数（0~31536000）
+ * @param SunElevation [输出] 太阳高度角（度），地平线以上为正值
+ * @param SunAzimuth [输出] 太阳方位角（度），从正北顺时针测量
+ * @param PolarCondition [输出] 极地条件标志：0=正常，1=极昼，-1=极夜
+ */
+void CalculateSunPosition(
+    const float& Latitude,
+    const float& Longitude,
+    const float& TimeStampOfEarthDay,
+    const float& TimeStampOfEarthYear,
+    float& SunElevation,
+    float& SunAzimuth,
+    int32& PolarCondition)
+{
+    // ===== 1. 输入预处理 =====
+    // 计算年序日（Day of Year, 1-365）
+    float DateOfYear = FMath::Fmod(TimeStampOfEarthYear / SECONDS_PER_DAY_EARTH, DAYS_PER_YEAR_EARTH);
+    
+    // 将秒转换为小时（地方时）
+    float LocalHour = TimeStampOfEarthDay / SECONDS_PER_HOUR;
+    
+    // ===== 2. 天文参数计算 =====
+    // 计算太阳赤纬角（δ），单位：弧度（使用标准近似公式）
+    float SolarDeclination = FMath::DegreesToRadians(OBLIQUITY * FMath::Sin(2 * PI * (284.0f + DateOfYear) / DAYS_PER_YEAR_EARTH));
+    
+    // 计算时角（H），单位：弧度
+    // a. 经度转换为时区修正（15度=1小时）
+    float TimeZoneCorrection = (Longitude - STANDARD_MERIDIAN) / DEG_TO_HOUR;
+    // b. 计算真太阳时
+    float LocalSolarTime = LocalHour + TimeZoneCorrection;
+    // c. 计算时角（度）并转换为弧度
+    float HourAngleDeg = DEG_TO_HOUR * (LocalSolarTime - 12.0f);
+    float HourAngleRad = FMath::DegreesToRadians(HourAngleDeg);
+    
+    // 纬度转换为弧度
+    float LatRad = FMath::DegreesToRadians(Latitude);
+    
+    // ===== 3. 太阳高度角计算 =====
+    // 使用标准球面三角公式：sin(α) = sin(φ)sin(δ) + cos(φ)cos(δ)cos(H)
+    float SinElevation = FMath::Sin(LatRad) * FMath::Sin(SolarDeclination) 
+                       + FMath::Cos(LatRad) * FMath::Cos(SolarDeclination) * FMath::Cos(HourAngleRad);
+    
+    // 处理浮点精度溢出，确保值在[-1, 1]范围内
+    SinElevation = FMath::Clamp(SinElevation, -1.0f, 1.0f);
+    
+    // 计算高度角弧度值（后续计算会复用）
+    float ElevationRad = FMath::Asin(SinElevation);
+    SunElevation = FMath::RadiansToDegrees(ElevationRad);
+    
+    // ===== 4. 太阳方位角计算 =====
+    // 公式：cos(Az) = [sin(δ) - sin(α)sin(φ)] / [cos(α)cos(φ)]
+	// 计算方位角的正弦和余弦分量
+	float sinAzimuth = -FMath::Cos(SolarDeclination) * FMath::Sin(HourAngleRad);
+	float cosAzimuth = FMath::Sin(SolarDeclination) * FMath::Cos(LatRad) 
+					 - FMath::Cos(SolarDeclination) * FMath::Sin(LatRad) * FMath::Cos(HourAngleRad);
+	
+	// 使用atan2计算方位角（弧度）
+	float azimuthRad = FMath::Atan2(sinAzimuth, cosAzimuth);
+	
+	// 转换为度数并确保在0-360度范围内
+	SunAzimuth = FMath::RadiansToDegrees(azimuthRad);
+	SunAzimuth = FMath::Fmod(SunAzimuth + 360.0f, 360.0f);
+	/*
+	// 特殊处理：如果高度角为0，进行微调以避免数值不稳定
+	if (FMath::Abs(SunElevation) < 0.1f) {
+		// 根据时角确定日出日落方向
+		if (HourAngleRad < 0) {
+			SunAzimuth = 90.0f; // 日出方向（东）
+		} else {
+			SunAzimuth = 270.0f; // 日落方向（西）
+		}
+	}
+    */
+	
+    // ===== 5. 极昼/极夜检测 =====
+    // 计算临界角余弦值（用于判断太阳是否可能升起）
+    float CriticalAngleCos = -FMath::Sin(LatRad) * FMath::Sin(SolarDeclination) / (FMath::Cos(LatRad) * FMath::Cos(SolarDeclination));
+    
+    // 判断逻辑
+    PolarCondition = 0; // 默认正常
+    if (CriticalAngleCos > 1.0f)
+    {
+        PolarCondition = -1; // 极夜（全天无日出）
+        SunElevation = -90.0f; // 太阳位于地平线以下
+    }
+	else if (CriticalAngleCos < -1.0f)
+	{
+        PolarCondition = 1;  // 极昼（全天有日照）
+        SunElevation = 90.0f; // 太阳位于头顶
+    }
+}
+
+/* Vector Pivot: Local Position, Vector Point at: Planet. */
+FRotator ConvertPlanetRotation(const float& ElevationDegree, const float& AzimuthDegree)
+{
+	FRotator Rotator = FRotator::ZeroRotator;
+	Rotator.Pitch = ElevationDegree;
+	Rotator.Yaw = AzimuthDegree;
+	return Rotator;
+}
+
+/* Vector Pivot: Local Position, Vector Point at: Planet. */
+FVector ConvertPlanetDirection(const float& ElevationDegree, const float& AzimuthDegree)
+{
+	return ConvertPlanetRotation(ElevationDegree, AzimuthDegree).Vector();
+}
+
+/* Vector Pivot: Planet, Vector Point at: Local Position. */
+FVector ConvertPlanetLightDirection(const float& ElevationDegree, const float& AzimuthDegree)
+{
+	return -ConvertPlanetDirection(ElevationDegree, AzimuthDegree);
+}
 
 UAetherWorldSubsystem::UAetherWorldSubsystem()
 {
-	
+	LightingAvatar = nullptr;
+	CloudAvatar = nullptr;
+	SystemMaterialParameterCollection = nullptr;
 }
 
 bool UAetherWorldSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
+	if (!Super::ShouldCreateSubsystem(Outer))
+	{
+		return false;
+	}
 	TArray<UClass*> DerivedClassList;
 	GetDerivedClasses(GetClass(), DerivedClassList, false);
 	return DerivedClassList.Num() == 0;
@@ -30,6 +183,8 @@ bool UAetherWorldSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 
 void UAetherWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
+	Super::Initialize(Collection);
+	
 	const UAetherPluginSettings* Settings = GetDefault<UAetherPluginSettings>();
 	
 	if (UMaterialParameterCollection* ParameterCollection = Settings->SystemMaterialParameterCollection.LoadSynchronous())
@@ -38,51 +193,76 @@ void UAetherWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 	else
 	{
-		// Log
+		// Todo: Log
 	}
 	
+	SettingsInfo = nullptr;
 	Controllers.Empty();
 	ActiveControllers.Empty();
+	Avatars.Empty();
 	LightingAvatar = nullptr;
+	CloudAvatar = nullptr;
+	SystemState.Reset();
+	StreamingSourceLocation = FVector4f::Zero();
+	StreamingSourceLocation.W = -1.0f;
 	
-	Super::Initialize(Collection);
-}
-
-UAetherWorldSubsystem* UAetherWorldSubsystem::Get(UObject* ContextObject)
-{
-	UAetherWorldSubsystem* Subsystem = Cast<UAetherWorldSubsystem>(USubsystemBlueprintLibrary::GetWorldSubsystem(ContextObject, StaticClass()));
-	return Subsystem;
+#if WITH_EDITOR
+	if (UWorld* World = GetWorld())
+	{
+		if (World->WorldType == EWorldType::Type::Editor)
+		{
+			FEditorDelegates::OnMapOpened.AddUObject(this, &UAetherWorldSubsystem::OnMapOpened);
+		}
+	}
+#endif
 }
 
 bool UAetherWorldSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
-	return Super::DoesSupportWorldType(WorldType);
+	return WorldType == EWorldType::Game || WorldType == EWorldType::Editor || WorldType == EWorldType::PIE;
 }
 
 bool UAetherWorldSubsystem::IsTickable() const
 {
-	if (const UWorld* World = GetWorld())
+	const UWorld* World = GetWorld();
+	if (!World)
 	{
-		if (World->WorldType == EWorldType::Type::EditorPreview || World->WorldType == EWorldType::Type::GameRPC || World->WorldType == EWorldType::Type::Inactive || World->WorldType == EWorldType::Type::None)
+		return false;
+	}
+#if WITH_EDITOR
+	if (World->WorldType == EWorldType::Type::Editor && GEditor)
+	{
+		if (const FViewport* Viewport = GEditor->GetActiveViewport())
+		{
+			// Editor world still maintains when pulling up a PIE world, but it can not be ever tick controller or system.
+			if (Viewport->IsPlayInEditorViewport())
+			{
+				return false;
+			}
+		}
+	}
+#endif
+	if (World->IsGameWorld() && !World->HasBegunPlay())
+	{
+		return false;
+	}
+	if (World->IsGameWorld())
+	{
+		if (SettingsInfo && !SettingsInfo->bSimulateInGame)
 		{
 			return false;
 		}
-#if WITH_EDITOR
-		if (World->WorldType == EWorldType::Type::Editor && GEditor)
-		{
-			if (const FViewport* Viewport = GEditor->GetActiveViewport())
-			{
-				// Editor world still maintains when PIE, but it can not be ever tick controller or system.
-				if (Viewport->IsPlayInEditorViewport())
-				{
-					return false;
-				}
-			}
-		}
-#endif
-		return true;
 	}
-	return false;
+#if WITH_EDITOR
+	else
+	{
+		if (SettingsInfo && !SettingsInfo->bSimulateInEditor)
+		{
+			return false;
+		}
+	}
+#endif
+	return true;
 }
 
 void UAetherWorldSubsystem::Tick(float DeltaTime)
@@ -91,20 +271,84 @@ void UAetherWorldSubsystem::Tick(float DeltaTime)
 	
 	SCOPE_CYCLE_COUNTER(STAT_AetherWorldSubsystem_Tick);
 	
-	EvaluateAndTickActiveControllers(DeltaTime);
-	
-	UpdateSystemState();
-	
+	EvaluateActiveControllers();
+	UpdateSourceCoordinate();
+	UpdateSystemState_DielRhythm(DeltaTime);
+	UpdateSystemStateFromActiveControllers(DeltaTime);
 	UpdateWorld();
 	
-	/*
-	FDelegateHandle Handle = FCoreDelegates::OnGetOnScreenMessages.AddLambda([](TMultiMap<FCoreDelegates::EOnScreenMessageSeverity, FText >& OutMessages)
+#if UE_ENABLE_DEBUG_DRAWING
+	if (CVarVisualizeAetherState.GetValueOnGameThread() > 0 && GEngine)
 	{
-		OutMessages.Add(
-			FCoreDelegates::EOnScreenMessageSeverity::Info,
-			FText(NSLOCTEXT("Aether", "AetherTest", "AAAAAAAAAAAAAAA")));
-	});
-	*/
+		FString DebugString = FString("Aether System State:\n") + SystemState.ToString();
+		GEngine->AddOnScreenDebugMessage((uint64)this + 0, 1.0f, FColor::Green, DebugString);
+	}
+	
+	if (CVarVisualizeAetherControllerWeight.GetValueOnGameThread() > 0 && GEngine)
+	{
+		FString DebugString = FString("Aether Controllers weight map:\n");
+		for (auto It = ActiveControllers.CreateConstIterator(); It; ++It)
+		{
+			DebugString += It.Key()->GetActorLabel() + FString(": ") + FString::SanitizeFloat(It.Value()) + FString("\n");
+		}
+		GEngine->AddOnScreenDebugMessage((uint64)this + 1, 1.0f, FColor::Green, DebugString);
+	}
+	
+	if (CVarVisualizeAetherControllerPoint.GetValueOnGameThread() > 0 && GEngine)
+	{
+		for (auto It = ActiveControllers.CreateConstIterator(); It; ++It)
+		{
+			It.Key()->DrawDebugPointInfo(FMath::Lerp(FLinearColor::Red, FLinearColor::Green, It.Value()).ToFColor(true));
+		}
+	}
+#endif
+}
+
+void UAetherWorldSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+	
+	// This is called earlier than any Actor's BeginPlay that does register work.
+	//InitializeAetherSystem();
+	InWorld.OnWorldBeginPlay.AddUObject(this, &UAetherWorldSubsystem::PostWorldBeginPlay);
+}
+
+UAetherWorldSubsystem* UAetherWorldSubsystem::Get(UObject* ContextObject)
+{
+	UAetherWorldSubsystem* Subsystem = Cast<UAetherWorldSubsystem>(USubsystemBlueprintLibrary::GetWorldSubsystem(ContextObject, StaticClass()));
+	return Subsystem;
+}
+
+void UAetherWorldSubsystem::RegisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo)
+{
+	if (!InSettingsInfo)
+	{
+		return;
+	}
+	SettingsInfo = InSettingsInfo;
+	
+#if WITH_EDITOR
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->WorldType == EWorldType::Type::Editor)
+		{
+			// Refresh for Editor World.
+			InitializeAetherSystem();
+		}
+	}
+#endif
+}
+
+void UAetherWorldSubsystem::UnregisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo)
+{
+	if (!InSettingsInfo)
+	{
+		return;
+	}
+	if (SettingsInfo == InSettingsInfo)
+	{
+		SettingsInfo = nullptr;
+	}
 }
 
 void UAetherWorldSubsystem::RegisterController(AAetherAreaController* InController)
@@ -114,9 +358,20 @@ void UAetherWorldSubsystem::RegisterController(AAetherAreaController* InControll
 		return;
 	}
 	Controllers.AddUnique(InController);
+	
+#if WITH_EDITOR
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->WorldType == EWorldType::Type::Editor)
+		{
+			// Refresh for Editor World.
+			InitializeAetherSystem();
+		}
+	}
+#endif
 }
 
-void UAetherWorldSubsystem::UnRegisterController(AAetherAreaController* InController)
+void UAetherWorldSubsystem::UnregisterController(AAetherAreaController* InController)
 {
 	if (!InController)
 	{
@@ -126,16 +381,35 @@ void UAetherWorldSubsystem::UnRegisterController(AAetherAreaController* InContro
 	ActiveControllers.Remove(InController);
 }
 
-void UAetherWorldSubsystem::RegisterLightingAvatar(AAetherLightingAvatar* InAvatar)
+void UAetherWorldSubsystem::RegisterAvatar(AAetherAvatarBase* InAvatar)
 {
 	if (!InAvatar)
 	{
 		return;
 	}
-	LightingAvatar = InAvatar;
+	if (AAetherLightingAvatar* InLightingAvatar = Cast<AAetherLightingAvatar>(InAvatar))
+	{
+		LightingAvatar = InLightingAvatar;
+	}
+	else if (AAetherCloudAvatar* InCloudAvatar = Cast<AAetherCloudAvatar>(InAvatar))
+	{
+		CloudAvatar = InCloudAvatar;
+	}
+	Avatars.AddUnique(InAvatar);
+	
+#if WITH_EDITOR
+	if (const UWorld* World = GetWorld())
+	{
+		if (World->WorldType == EWorldType::Type::Editor)
+		{
+			// Refresh for Editor World.
+			InitializeAetherSystem();
+		}
+	}
+#endif
 }
 
-void UAetherWorldSubsystem::UnregisterLightingAvatar(AAetherLightingAvatar* InAvatar)
+void UAetherWorldSubsystem::UnregisterAvatar(AAetherAvatarBase* InAvatar)
 {
 	if (!InAvatar)
 	{
@@ -145,27 +419,11 @@ void UAetherWorldSubsystem::UnregisterLightingAvatar(AAetherLightingAvatar* InAv
 	{
 		LightingAvatar = nullptr;
 	}
-}
-
-void UAetherWorldSubsystem::RegisterCloudAvatar(AAetherCloudAvatar* InAvatar)
-{
-	if (!InAvatar)
-	{
-		return;
-	}
-	CloudAvatar = InAvatar;
-}
-
-void UAetherWorldSubsystem::UnregisterCloudAvatar(AAetherCloudAvatar* InAvatar)
-{
-	if (!InAvatar)
-	{
-		return;
-	}
-	if (CloudAvatar == InAvatar)
+	else if (CloudAvatar == InAvatar)
 	{
 		CloudAvatar = nullptr;
 	}
+	Avatars.Remove(InAvatar);
 }
 
 void UAetherWorldSubsystem::TriggerWeatherEventImmediately(const FGameplayTag& EventTag)
@@ -173,90 +431,47 @@ void UAetherWorldSubsystem::TriggerWeatherEventImmediately(const FGameplayTag& E
 	
 }
 
+void UAetherWorldSubsystem::InitializeAetherSystem()
+{
+	SystemState.Reset();
+	StreamingSourceLocation = FVector4f::Zero();
+	StreamingSourceLocation.W = -1.0f;
+	EvaluateActiveControllers();
+	UpdateSourceCoordinate();
+	if (SettingsInfo)
+	{
+		SystemState.ProgressOfYear = FMath::Frac(SettingsInfo->InitTimeStampOfYear / (SettingsInfo->PeriodOfDay * SettingsInfo->DaysOfMonth * 12));
+	}
+	UpdateSystemState_DielRhythm(0.0f);
+	UpdateSystemStateFromActiveControllers(0.0f);
+	UpdateWorld();
+}
+
+void UAetherWorldSubsystem::PostWorldBeginPlay()
+{
+	// Game Word initialize once. All the actors have registered.
+	InitializeAetherSystem();
+}
+
 #if WITH_EDITOR
-void UAetherWorldSubsystem::ModifyAllControllersSimulationPlanetType_Editor(const ESimulationPlanetType& NewValue)
+void UAetherWorldSubsystem::OnMapOpened(const FString& Filename, bool bAsTemplate)
 {
-	for (AAetherAreaController* Controller : Controllers)
+	if (!bAsTemplate)
 	{
-		if (Controller)
-		{
-			if (Controller->GetSimulationPlanet() != NewValue)
-			{
-				Controller->SetSimulationPlanet(NewValue);
-				Controller->MarkPackageDirty();
-			}
-		}
-	}
-}
-
-void UAetherWorldSubsystem::SyncOtherControllerDielRhythm_Editor(const AAetherAreaController* CenterController)
-{
-	if (!CenterController)
-	{
-		return;
-	}
-	for (AAetherAreaController* OtherController : Controllers)
-	{
-		if (OtherController)
-		{
-			bool bDirty = false;
-			if (OtherController->PeriodOfDay != CenterController->PeriodOfDay)
-			{
-				OtherController->PeriodOfDay = CenterController->PeriodOfDay;
-				bDirty |= true;
-			}
-			if (OtherController->DaysOfMonth != CenterController->DaysOfMonth)
-			{
-				OtherController->DaysOfMonth = CenterController->DaysOfMonth;
-				bDirty |= true;
-			}
-			if (OtherController->DaytimeSpeedScale != CenterController->DaytimeSpeedScale)
-			{
-				OtherController->DaytimeSpeedScale = CenterController->DaytimeSpeedScale;
-				bDirty |= true;
-			}
-			if (OtherController->NightSpeedScale != CenterController->NightSpeedScale)
-			{
-				OtherController->NightSpeedScale = CenterController->NightSpeedScale;
-				bDirty |= true;
-			}
-			if (OtherController->NorthDirectionYawOffset != CenterController->NorthDirectionYawOffset)
-			{
-				OtherController->NorthDirectionYawOffset = CenterController->NorthDirectionYawOffset;
-				bDirty |= true;
-			}
-			if (bDirty)
-			{
-				OtherController->MarkPackageDirty();
-			}
-		}
-	}
-}
-
-void UAetherWorldSubsystem::CorrectOtherControllerInitTimeStamp_Editor(const AAetherAreaController* CenterController)
-{
-	if (!CenterController)
-	{
-		return;
-	}
-	const float& Longitude = CenterController->Longitude;
-	for (AAetherAreaController* OtherController : Controllers)
-	{
-		if (OtherController)
-		{
-			
-		}
+		// Game Word initialize once. All the actors have registered.
+		InitializeAetherSystem();
 	}
 }
 #endif
 
-void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
+void UAetherWorldSubsystem::EvaluateActiveControllers()
 {
-	bool bCouldTickController = false;
-	FVector StreamingSourceLocation = FVector::ZeroVector;
-#if WITH_EDITOR
+	ActiveControllers.Reset();
+	
+	StreamingSourceLocation.W = -1.0f;
 	if (UWorld* World = GetWorld())
 	{
+#if WITH_EDITOR
 		if (GEditor && World->WorldType == EWorldType::Type::Editor)
 		{
 			if (const FViewport* Viewport = GEditor->GetActiveViewport())
@@ -265,74 +480,155 @@ void UAetherWorldSubsystem::EvaluateAndTickActiveControllers(float DeltaTime)
 				{
 					if (const FEditorViewportClient* EditorViewportClient = static_cast<FEditorViewportClient*>(ViewportClient))
 					{
-						StreamingSourceLocation = EditorViewportClient->GetViewLocation();
-						bCouldTickController = true;
+						FVector ViewLocation = EditorViewportClient->GetViewLocation();
+						StreamingSourceLocation.Set(ViewLocation.X, ViewLocation.Y, ViewLocation.Z, 1.0f);
 					}
 				}
 			}
 		}
 		else
 		{
+#endif
 			check(World->IsGameWorld());
 			if (APlayerController* PlayerController = World->GetFirstPlayerController())
 			{
-				FRotator Rotation;
-				PlayerController->GetPlayerViewPoint(StreamingSourceLocation, Rotation);
-				bCouldTickController = true;
+				if (const AActor* ViewTarget = PlayerController->GetViewTarget())
+				{
+					FVector ViewTargetLocation = ViewTarget->GetActorLocation();
+					StreamingSourceLocation.Set(ViewTargetLocation.X, ViewTargetLocation.Y, ViewTargetLocation.Z, 1.0f);
+				}
+				else
+				{
+					FVector ViewPointLocation;
+					FRotator Rotation;
+					PlayerController->GetPlayerViewPoint(ViewPointLocation, Rotation);
+					StreamingSourceLocation.Set(ViewPointLocation.X, ViewPointLocation.Y, ViewPointLocation.Z, 1.0f);
+				}
+			}
+#if WITH_EDITOR
+		}
+#endif
+	}
+	
+	if (StreamingSourceLocation.W > 0.0f)
+	{
+		float WeightSum = 0.0f;
+		TMap<AAetherAreaController*, float> ControllerDistanceMap;
+		for (AAetherAreaController* Controller : Controllers)
+		{
+			if (Controller)
+			{
+				float Dis = FVector::Distance(Controller->GetActorLocation(), FVector(StreamingSourceLocation));
+				Dis = FMath::Max(Dis - Controller->GetAffectRadius(), UE_SMALL_NUMBER);
+				float Weight = 1.0f / FMath::Pow(Dis, 2.0f);
+				ControllerDistanceMap.Add(Controller, Weight);
+				WeightSum += Weight;
 			}
 		}
-	}
-#else
-	if (UWorld* World = GetWorld())
-	{
-		check(World->IsGameWorld());
-        if (APlayerController* PlayerController = World->GetFirstPlayerController())
-        {
-        	FRotator Rotation;
-        	PlayerController->GetPlayerViewPoint(StreamingSourceLocation, Rotation);
-        	bCouldTickController = true;
-        }
-	}
-#endif
-	
-	ActiveControllers.Reset();
-	if (bCouldTickController)
-	{
-		TArray<TObjectPtr<AAetherAreaController>> SortedList = Controllers;
-		if (SortedList.Num() > 1)
+		for (auto It = ControllerDistanceMap.CreateConstIterator(); It; ++It)
 		{
-			SortedList.Sort([StreamingSourceLocation](const TObjectPtr<AAetherAreaController>& A, const TObjectPtr<AAetherAreaController>& B) {
-            	return FVector::Distance(A->GetActorLocation(), StreamingSourceLocation) < FVector::Distance(B->GetActorLocation(), StreamingSourceLocation);
-            });
-		}
-		for (int32 i = 0; i < 2 && i < SortedList.Num(); i++)
-		{
-			ActiveControllers.Add(SortedList[i], 1.0f);
-		}
-	}
-	
-	for (AAetherAreaController* Controller : Controllers)
-	{
-		check(Controller);
-		if (ActiveControllers.Contains(Controller))
-		{
-			Controller->TickAetherController(DeltaTime);
-		}
-		else
-		{
-			Controller->IncSinceLastTickTime(DeltaTime);
+			float NormalizedWeight = It.Value() / WeightSum;
+			if (NormalizedWeight > UE_KINDA_SMALL_NUMBER)
+			{
+				ActiveControllers.Add(It.Key(), NormalizedWeight);
+			}
 		}
 	}
 }
 
-void UAetherWorldSubsystem::UpdateSystemState()
+void UAetherWorldSubsystem::UpdateSourceCoordinate()
 {
-	SystemState.Reset();
-	for (auto It = ActiveControllers.CreateConstIterator(); It; ++It)
+	if (SettingsInfo && StreamingSourceLocation.W > 0.0f)
 	{
-		SystemState = SystemState + It.Key()->GetCurrentState() * It.Value();
+		FVector Offset = FVector(StreamingSourceLocation) - SettingsInfo->GetActorLocation();
+		Offset.Z = 0.0f;
+		FVector NorthDirection = FRotator(0.0f, SettingsInfo->NorthDirectionYawOffset, 0.0f).Vector();
+		FVector EastDirection = FRotator(0.0f, SettingsInfo->NorthDirectionYawOffset + 90.0f, 0.0f).Vector();
+		float NorthDis = FVector::DotProduct(Offset, NorthDirection);
+		float EastDis = FVector::DotProduct(Offset, EastDirection);
+		SystemState.Latitude = SettingsInfo->Latitude + NorthDis / SettingsInfo->NorthDisPerDegreeLatitude / 100.0f;
+		SystemState.Longitude = SettingsInfo->Longitude + EastDis / SettingsInfo->EastDisPerDegreeLongitude / 100.0;
 	}
-	SystemState.Normalize();
+}
+
+void UAetherWorldSubsystem::UpdateSystemState_DielRhythm(float DeltaTime)
+{
+	if (1)
+	{
+		UpdateSystemState_DielRhythm_Earth(DeltaTime);
+	}
+	else
+	{
+		UpdateSystemState_DielRhythm_Custom(DeltaTime);
+	}
+}
+
+void UAetherWorldSubsystem::UpdateSystemState_DielRhythm_Earth(float DeltaTime)
+{
+	if (SettingsInfo)
+	{
+		float DaytimeSpeedScale = ActiveControllers.Num() > 0 ? 0.0f : 1.0f;
+        float NightSpeedScale = ActiveControllers.Num() > 0 ? 0.0f : 1.0f;
+        for (auto It = ActiveControllers.CreateConstIterator(); It; ++It)
+        {
+        	DaytimeSpeedScale += It.Key()->DaytimeSpeedScale * It.Value();
+        	NightSpeedScale += It.Key()->NightSpeedScale * It.Value();
+        }
+        float DielDeltaTime = DeltaTime * (SystemState.SunLightDirection.Z < 0.0f ? DaytimeSpeedScale : NightSpeedScale);
+        SystemState.ProgressOfYear += DielDeltaTime / (SettingsInfo->PeriodOfDay * SettingsInfo->DaysOfMonth * 12);
+        SystemState.ProgressOfYear = FMath::Frac(SystemState.ProgressOfYear);
+        // Todo
+        SystemState.Time += DeltaTime;
+	}
+	UpdatePlanetByTime();
+}
+
+void UAetherWorldSubsystem::UpdatePlanetByTime()
+{
+	if (SettingsInfo)
+	{
+		int32 PolarCondition = 0;
+        float SunElevation = 0.0f;
+        float SunAzimuth = 0.0f;
+        const float ProgressOfDay = FMath::Frac(SystemState.ProgressOfYear * SettingsInfo->DaysOfMonth * 12);
+        CalculateSunPosition(
+        	SystemState.Latitude,
+        	SystemState.Longitude,
+        	ProgressOfDay * SECONDS_PER_DAY_EARTH,
+        	SystemState.ProgressOfYear * SECONDS_PER_YEAR_EARTH,
+        	SunElevation,
+        	SunAzimuth,
+        	PolarCondition);
+        SystemState.SunElevation = SunElevation;
+        SystemState.SunAzimuth = SunAzimuth;
+        SystemState.SunLightDirection = ConvertPlanetLightDirection(SunElevation, SunAzimuth);
+	}
+}
+
+void UAetherWorldSubsystem::UpdateSystemState_DielRhythm_Custom(float DeltaTime)
+{
+	
+}
+
+void UAetherWorldSubsystem::UpdateSystemStateFromActiveControllers(float DeltaTime)
+{
+	EvaluateWeatherEvent(DeltaTime);
+	UpdateWeatherEvent(DeltaTime);
+	// Todo
+	//CalcSurfaceCoeffcient(ActualDeltaTime);
+}
+
+void UAetherWorldSubsystem::EvaluateWeatherEvent(float DeltaTime)
+{
+	if (ActiveControllers.Num() > 0)
+	{
+		
+	}
+}
+
+void UAetherWorldSubsystem::UpdateWeatherEvent(float DeltaTime)
+{
+	
 }
 
 void UAetherWorldSubsystem::UpdateWorld()
@@ -343,13 +639,12 @@ void UAetherWorldSubsystem::UpdateWorld()
 
 void UAetherWorldSubsystem::UpdateAvatar()
 {
-	if (LightingAvatar)
+	for (AAetherAvatarBase* Avatar : Avatars)
 	{
-		LightingAvatar->UpdateLighting(SystemState);
-	}
-	if (CloudAvatar)
-	{
-		CloudAvatar->UpdateCloudLayers(SystemState);
+		if (Avatar)
+		{
+			Avatar->UpdateFromSystemState(SystemState);
+		}
 	}
 }
 

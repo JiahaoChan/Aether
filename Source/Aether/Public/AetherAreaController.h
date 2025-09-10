@@ -12,6 +12,14 @@
 
 #include "AetherAreaController.generated.h"
 
+#if WITH_EDITORONLY_DATA
+UCLASS(NotBlueprintable)
+class UAetherControllerVisualizeComponent : public UActorComponent
+{
+	GENERATED_BODY()
+};
+#endif
+
 UCLASS(HideCategories = ("Collision", "Physics", "Cooking", "Navigation", "Networking", "Replication", "Input", "Rendering", "HLOD"))
 class AETHER_API AAetherAreaController : public AActor
 {
@@ -20,66 +28,38 @@ class AETHER_API AAetherAreaController : public AActor
 	friend class UAetherWorldSubsystem;
 	
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System")
-	bool bSimulateInGame;
-	
 #if WITH_EDITORONLY_DATA
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System")
-	bool bSimulateInEditor;
+	UPROPERTY()
+	TObjectPtr<UAetherControllerVisualizeComponent> VisualizeComponent;
 #endif
 	
+	//~ Begin System Config Property
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System")
 	float AffectRadius;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System")
-	ESimulationPlanetType SimulationPlanet;
-	
 #if WITH_EDITORONLY_DATA
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|System")
 	TObjectPtr<class UAetherSystemPreset> EarthLocationPreset;
 #endif
+	//~ End System Config Property
 	
-	// Diel Rhythm Begins
-	// 纬度
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
-	float Latitude;
-	
-	// 经度
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
-	float Longitude;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides, ClampMin = "0.0"))
-	float PeriodOfDay;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides, ClampMin = "1"))
-	int32 DaysOfMonth;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
+	//~ Begin Diel Rhythm Property
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm")
 	float DaytimeSpeedScale;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm")
 	float NightSpeedScale;
+	//~ End Diel Rhythm Property
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Diel Rhythm", meta = (EditCondition = "SimulationPlanet == ESimulationPlanetType::Earth && ControllerRange == EAetherControllerRangeType::Global", EditConditionHides))
-	float NorthDirectionYawOffset;
-	// Diel Rhythm Ends
-	
-	// Weather Begins
+	//~ Begin Weather Property
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Weather")
 	TArray<struct FWeatherEventDescription> PossibleWeatherEvents;
-	// Weather Ends
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|State")
-	float InitTimeStampOfYear;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aether|Weather")
+	TArray<FWeatherEventDescription> SubWeatherEvents;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|State")
-	FGameplayTagContainer InitWeatherEventTags;
-	
-	UPROPERTY(Transient, DuplicateTransient, VisibleAnywhere, BlueprintReadWrite, Category = "Aether|State")
-	FAetherState CurrentState;
-	
-	UPROPERTY(Transient, DuplicateTransient)
-	FAetherState LastState;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Weather")
+	TArray<FWeatherEventDescription> ExternalWeatherEvents;
 	
 	UPROPERTY(Transient, DuplicateTransient)
 	TArray<TObjectPtr<class UAetherWeatherEventInstance>> ActiveWeatherInstance;
@@ -91,6 +71,25 @@ protected:
 	// Cache
 	UPROPERTY(Transient, DuplicateTransient)
 	FGameplayTagContainer BlockingWeatherTags;
+	//~ End Weather Property
+	
+	//~ Begin Evaporation Property
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Evaporation")
+	float EvaporationCapacity;
+	
+	float SurfaceWater;
+	//~ End Evaporation Property
+	
+	//~ Begin State Property
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|State")
+	FGameplayTagContainer InitWeatherEventTags;
+	
+	UPROPERTY(Transient, DuplicateTransient, VisibleAnywhere, BlueprintReadWrite, Category = "Aether|State")
+	FAetherState CurrentState;
+	
+	UPROPERTY(Transient, DuplicateTransient)
+	FAetherState LastState;
+	//~ End State Property
 	
 	float SinceLastTickTime;
 	
@@ -99,6 +98,7 @@ protected:
 public:
 	AAetherAreaController();
 	
+	//~ Begin AActor Interface
 protected:
 	virtual void BeginPlay() override;
 	
@@ -107,14 +107,25 @@ public:
 	
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
+	virtual void Destroyed() override;
+	
+#if WITH_EDITOR
+	virtual bool CanChangeIsSpatiallyLoadedFlag() const override { return false; }
+#endif
+	//~ End AActor Interface
+	
+	//~ Begin UObject Interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual bool CanEditChange(const FProperty* InProperty) const override;
 #endif
 	
 	virtual void PostLoad() override;
+	//~ End UObject Interface
 	
-	virtual void Destroyed() override;
+#if UE_ENABLE_DEBUG_DRAWING
+	void DrawDebugPointInfo(const FColor& Color) const;
+#endif
 	
 protected:
 	void Initialize();
@@ -144,11 +155,11 @@ public:
 private:
 	void SetWeatherInstanceState(UAetherWeatherEventInstance* InInstance, const EWeatherEventExecuteState& NewState);
 	
+protected:
+	virtual void CalcSurfaceCoeffcient(float DeltaTime);
+	
 private:
 #if WITH_EDITOR
-	UFUNCTION(CallInEditor, Category = "Aether")
-	void CaptureTimeStamp();
-	
 	UFUNCTION(CallInEditor, Category = "Aether")
 	void SyncOtherControllerDielRhythm();
 	
@@ -158,9 +169,6 @@ private:
 	
 public:
 	FORCEINLINE const float& GetAffectRadius() const { return AffectRadius; }
-	
-	FORCEINLINE const ESimulationPlanetType& GetSimulationPlanet() const { return SimulationPlanet; }
-	void SetSimulationPlanet(const ESimulationPlanetType& NewValue);
 	
 	FORCEINLINE FAetherState& GetCurrentState() { return CurrentState; }
 	FORCEINLINE const FAetherState& GetCurrentState() const { return CurrentState; }

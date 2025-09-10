@@ -29,28 +29,44 @@ void UAetherSystemPreset::PostEditChangeProperty(FPropertyChangedEvent& Property
 	{
 		for (FWeatherEventDescription& Description : PossibleWeatherEvents)
 		{
+			Description.ClampProbability();
 			Description.UpdateHappeningMonthDisplayString();
-			Description.FixProbability();
 		}
 	}
 }
+#endif
 
 void UAetherSystemPreset::PreSave(FObjectPreSaveContext SaveContext)
 {
 	Super::PreSave(SaveContext);
 	
+	for (int32 i = PossibleWeatherEvents.Num() - 1; i >= 0; i--)
+	{
+		if (PossibleWeatherEvents[i].TriggerSource != EWeatherTriggerSource::AetherController)
+		{
+			PossibleWeatherEvents.RemoveAt(i);
+			// Todo: Pop message?
+		}
+	}
 }
-#endif
 
 void UAetherSystemPreset::PostLoad()
 {
 	Super::PostLoad();
 	
+	for (int32 i = PossibleWeatherEvents.Num() - 1; i >= 0; i--)
+	{
+		if (PossibleWeatherEvents[i].TriggerSource != EWeatherTriggerSource::AetherController)
+		{
+			PossibleWeatherEvents.RemoveAt(i);
+		}
+	}
+	
 #if WITH_EDITORONLY_DATA
 	for (FWeatherEventDescription& Description : PossibleWeatherEvents)
 	{
+		Description.ClampProbability();
 		Description.UpdateHappeningMonthDisplayString();
-		Description.FixProbability();
 	}
 #endif
 }

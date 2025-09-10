@@ -6,8 +6,7 @@
 #include "AetherCloudAvatar.h"
 
 #include "Components/BillboardComponent.h"
-#include "Components/DirectionalLightComponent.h"
-#include "Components/SkyLightComponent.h"
+#include "NiagaraComponent.h"
 
 #include "AetherWorldSubsystem.h"
 
@@ -23,11 +22,10 @@ AAetherCloudAvatar::AAetherCloudAvatar()
 	RootComponent = AvatarRootComponent;
 	
 #if WITH_EDITORONLY_DATA
-	UBillboardComponent * SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
+	UBillboardComponent* SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
 	
 	if (!IsRunningCommandlet())
 	{
-		// Structure to hold one-time initialization
 		struct FConstructorStatics
 		{
 			ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteTextureObject;
@@ -55,16 +53,14 @@ AAetherCloudAvatar::AAetherCloudAvatar()
 		}
 	}
 #endif // WITH_EDITORONLY_DATA
+	
+	RainFXComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("RainFX"));
+	RainFXComponent->SetupAttachment(RootComponent);
 }
 
 void AAetherCloudAvatar::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-    {
-    	Subsystem->RegisterCloudAvatar(this);
-    }
 }
 
 void AAetherCloudAvatar::Tick(float DeltaTime)
@@ -72,35 +68,7 @@ void AAetherCloudAvatar::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AAetherCloudAvatar::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-	
-#if WITH_EDITOR
-	if (const UWorld* World = GetWorld())
-	{
-		if (World->WorldType == EWorldType::Type::Editor)
-		{
-			if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-			{
-				Subsystem->RegisterCloudAvatar(this);
-			}
-		}
-	}
-#endif
-}
-
-void AAetherCloudAvatar::Destroyed()
-{
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-    {
-    	Subsystem->UnregisterCloudAvatar(this);
-    }
-	
-	Super::Destroyed();
-}
-
-void AAetherCloudAvatar::UpdateCloudLayers(const FAetherState& State)
+void AAetherCloudAvatar::UpdateFromSystemState(const FAetherState& State)
 {
 	
 }

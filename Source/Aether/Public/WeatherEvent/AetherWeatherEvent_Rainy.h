@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "Distributions/DistributionFloat.h"
+
 #include "AetherWeatherEvent.h"
 
 #include "AetherWeatherEvent_Rainy.generated.h"
@@ -21,15 +23,35 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rainy")
 	float RainFallMin;
 	
-	UAetherWeatherEvent_Rainy()
-	{
-		EventType = EWeatherEventType::Rainy;
-		
-		RainFallMax = 0.0f;
-		RainFallMin = 0.0f;
-	}
+	UPROPERTY(EditAnywhere, Category="Rainy")
+	FRichCurve BlendingInRainFallCurve;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Rainy")
+	FRawDistributionFloat BlendingInRainFall;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Rainy")
+	FRawDistributionFloat RunningRainFall;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Rainy")
+	FRawDistributionFloat BlendingOutRainFall;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Rainy")
+	TObjectPtr<class UAetherWeatherEvent_Lightning> OptionalLightningEvent;
+	
+	UAetherWeatherEvent_Rainy();
+	
+	//~ Begin UAetherWeatherEvent Interface
 	virtual UAetherWeatherEventInstance* MakeInstance_Native(AAetherAreaController* Outer) override;
+	
+	virtual TArray<FWeatherEventDescription> GetInnerWeatherEventDescriptions() override;
+	//~ End UAetherWeatherEvent Interface
+	
+	//~ Begin UObject Interface
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	virtual void PostInitProperties() override;
+	//~ End UObject Interface
 };
 
 UCLASS(NotBlueprintable)

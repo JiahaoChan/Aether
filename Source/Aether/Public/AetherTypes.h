@@ -12,7 +12,7 @@
 #include "AetherTypes.generated.h"
 
 UENUM(BlueprintType)
-enum class ESimulationPlanetType : uint8
+enum class ESimulatePlanetType : uint8
 {
 	Earth			UMETA(DisplayName = "Earth"),
 	CustomPlanet	UMETA(Hidden),
@@ -47,8 +47,15 @@ enum class EAetherMonth: uint8
 UENUM(BlueprintType)
 enum class EWeatherTriggerSource: uint8
 {
+	/**
+	 * Evaluated if happens by AetherAreaController.
+	 */
 	AetherController		UMETA(DisplayName = "Aether Controller"),
-	External				UMETA(DisplayName = "External"),
+	/**
+	 * Triggered by other weather events as a sub weather event.
+	 */
+	WeatherEvent			UMETA(DisplayName = "WeatherEvent"),
+	GameplayExternal		UMETA(DisplayName = "GameplayExternal"),
 };
 
 UENUM(BlueprintType)
@@ -66,6 +73,8 @@ enum class EWeatherEventType : uint8
 	Snowy			UMETA(DisplayName = "Snowy"),
 	Windy			UMETA(DisplayName = "Windy"),
 	Foggy			UMETA(DisplayName = "Foggy"),
+	Lightning		UMETA(DisplayName = "Lightning"),
+	Rainbow			UMETA(DisplayName = "Rainbow"),
 	Custom			UMETA(DisplayName = "Custom"),
 };
 
@@ -91,40 +100,49 @@ struct FAetherState
 {
 	GENERATED_BODY()
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "deg"))
 	float Latitude;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "deg"))
 	float Longitude;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "%"))
 	float ProgressOfYear;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EAetherMonth Month;
 	
+	/**
+	 * Vector Pivot: Planet, Vector Point at: Local Position.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector SunLightDirection;
 	
+	/**
+	 * Vector Pivot: Planet, Vector Point at: Local Position.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector MoonLightDirection;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "C"))
 	float AirTemperature;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "C"))
 	float GroundTemperature;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "mm"))
 	float RainFall;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "mm"))
 	float SnowFall;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "%"))
 	float SurfaceRainRemain;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "%"))
+	float PuddleRainRemain;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "%"))
 	float SurfaceSnowDepth;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -136,9 +154,13 @@ struct FAetherState
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FogIntensity;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ForceUnits = "%"))
+	float CloudCoverage;
+	
 	float Time;
 	float SunElevation;
 	float SunAzimuth;
+	float TestValue;
 	
 	FAetherState();
 	

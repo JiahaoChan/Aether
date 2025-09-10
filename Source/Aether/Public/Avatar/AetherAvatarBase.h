@@ -10,17 +10,15 @@
 
 #include "AetherTypes.h"
 
-#include "AetherCloudAvatar.generated.h"
+#include "AetherAvatarBase.generated.h"
 
-UCLASS()
-class AETHER_API AAetherCloudAvatar : public AActor
+UCLASS(Abstract)
+class AETHER_API AAetherAvatarBase : public AActor
 {
 	GENERATED_BODY()
 	
-private:
-	
 public:
-	AAetherCloudAvatar();
+	AAetherAvatarBase();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -32,6 +30,9 @@ public:
 	
 	virtual void Destroyed() override;
 	
-public:
-	void UpdateCloudLayers(const FAetherState& State);
+	//~ Begin Aether Interface
+	virtual bool IsGlobalAvatar() const { return true; }
+	
+	virtual void UpdateFromSystemState(const FAetherState& State) {}
+	//~ End Aether Interface
 };

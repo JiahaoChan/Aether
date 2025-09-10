@@ -9,7 +9,6 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "AetherTypes.h"
-#include "Rendering/AetherSceneViewExtension.h"
 
 #include "AetherWorldSubsystem.generated.h"
 
@@ -20,10 +19,16 @@ class AETHER_API UAetherWorldSubsystem : public UTickableWorldSubsystem
 	
 protected:
 	UPROPERTY()
+	TObjectPtr<class AAetherSettingsInfo> SettingsInfo;
+	
+	UPROPERTY()
 	TArray<TObjectPtr<class AAetherAreaController>> Controllers;
 	
 	UPROPERTY()
 	TMap<TObjectPtr<AAetherAreaController>, float> ActiveControllers;
+	
+	UPROPERTY()
+	TArray<TObjectPtr<class AAetherAvatarBase>> Avatars;
 	
 	UPROPERTY()
 	TObjectPtr<class AAetherLightingAvatar> LightingAvatar;
@@ -37,18 +42,16 @@ protected:
 	UPROPERTY()
 	FAetherState SystemState;
 	
-	//TUniquePtr<FAetherViewParameters> CachedViewUniformShaderParameters;
-	
-	//TMap<int32, TUniquePtr<FAetherViewParameters>> Map;
+	// Cache for calculation.
+	FVector4f StreamingSourceLocation;
 	
 public:
 	UAetherWorldSubsystem();
 	
+	//~ Begin UTickableWorldSubsystem Interface
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	
-	static UAetherWorldSubsystem* Get(UObject* ContextObject);
 	
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	
@@ -60,34 +63,57 @@ public:
 	
 	virtual bool IsTickableInEditor() const override { return true; }
 	
+	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+	//~ End UTickableWorldSubsystem Interface
+	
 public:
+	//~ Begin UAetherWorldSubsystem Interface
+	static UAetherWorldSubsystem* Get(UObject* ContextObject);
+	
+	void RegisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo);
+	void UnregisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo);
+	
 	void RegisterController(AAetherAreaController* InController);
-	void UnRegisterController(AAetherAreaController* InController);
+	void UnregisterController(AAetherAreaController* InController);
 	
-	void RegisterLightingAvatar(AAetherLightingAvatar* InAvatar);
-	void UnregisterLightingAvatar(AAetherLightingAvatar* InAvatar);
-	
-	void RegisterCloudAvatar(AAetherCloudAvatar* InAvatar);
-	void UnregisterCloudAvatar(AAetherCloudAvatar* InAvatar);
+	void RegisterAvatar(AAetherAvatarBase* InAvatar);
+	void UnregisterAvatar(AAetherAvatarBase* InAvatar);
 	
 	void TriggerWeatherEventImmediately(const FGameplayTag& EventTag);
 	
-#if WITH_EDITOR
-	void ModifyAllControllersSimulationPlanetType_Editor(const ESimulationPlanetType& NewValue);
-	
-	void SyncOtherControllerDielRhythm_Editor(const AAetherAreaController* CenterController);
-	
-	void CorrectOtherControllerInitTimeStamp_Editor(const AAetherAreaController* CenterController);
-#endif
+	void InitializeAetherSystem();
+	//~ End UAetherWorldSubsystem Interface
 	
 protected:
-	void EvaluateAndTickActiveControllers(float DeltaTime);
+	void PostWorldBeginPlay();
 	
-	void UpdateSystemState();
+#if WITH_EDITOR
+	void OnMapOpened(const FString& Filename, bool bAsTemplate);
+#endif
+	
+	void EvaluateActiveControllers();
+	
+	void UpdateSourceCoordinate();
+	
+	void UpdateSystemState_DielRhythm(float DeltaTime);
+	
+	void UpdateSystemState_DielRhythm_Earth(float DeltaTime);
+	void UpdatePlanetByTime();
+	
+	void UpdateSystemState_DielRhythm_Custom(float DeltaTime);
+	
+	void UpdateSystemStateFromActiveControllers(float DeltaTime);
+	
+	void EvaluateWeatherEvent(float DeltaTime);
+	void UpdateWeatherEvent(float DeltaTime);
 	
 	void UpdateWorld();
 	
 	void UpdateAvatar();
 	
 	void UpdateSystemMaterialParameter();
+	
+public:
+	FORCEINLINE const TMap<TObjectPtr<AAetherAreaController>, float>& GetActiveControllers() const { return ActiveControllers; }
+	FORCEINLINE const FAetherState& GetSystemState() const { return SystemState; }
 };
