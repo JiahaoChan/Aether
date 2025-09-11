@@ -19,10 +19,10 @@ class AETHER_API UAetherWorldSubsystem : public UTickableWorldSubsystem
 	
 protected:
 	UPROPERTY()
-	TObjectPtr<class AAetherSettingsInfo> SettingsInfo;
+	TObjectPtr<class AAetherGlobalController> GlobalController;
 	
 	UPROPERTY()
-	TArray<TObjectPtr<class AAetherAreaController>> Controllers;
+	TArray<TObjectPtr<class AAetherAreaController>> AreaControllers;
 	
 	UPROPERTY()
 	TMap<TObjectPtr<AAetherAreaController>, float> ActiveControllers;
@@ -70,11 +70,8 @@ public:
 	//~ Begin UAetherWorldSubsystem Interface
 	static UAetherWorldSubsystem* Get(UObject* ContextObject);
 	
-	void RegisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo);
-	void UnregisterGlobalSettings(AAetherSettingsInfo* InSettingsInfo);
-	
-	void RegisterController(AAetherAreaController* InController);
-	void UnregisterController(AAetherAreaController* InController);
+	void RegisterController(class AAetherControllerBase* InController);
+	void UnregisterController(AAetherControllerBase* InController);
 	
 	void RegisterAvatar(AAetherAvatarBase* InAvatar);
 	void UnregisterAvatar(AAetherAvatarBase* InAvatar);

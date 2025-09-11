@@ -6,22 +6,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
 
+#include "AetherControllerBase.h"
 #include "AetherTypes.h"
 
-#include "AetherSettingsInfo.generated.h"
+#include "AetherGlobalController.generated.h"
 
 #if WITH_EDITORONLY_DATA
 UCLASS(NotBlueprintable)
-class UAetherSettingsVisualizeComponent : public UActorComponent
+class UAetherGlobalControllerVisualizeComponent : public UActorComponent
 {
 	GENERATED_BODY()
 };
 #endif
 
-UCLASS(HideCategories = ("Physics", "Cooking", "LevelInstance", "Navigation", "Networking", "Replication"))
-class AETHER_API AAetherSettingsInfo : public AInfo
+UCLASS()
+class AETHER_API AAetherGlobalController : public AAetherControllerBase
 {
 	GENERATED_BODY()
 	
@@ -30,7 +30,7 @@ class AETHER_API AAetherSettingsInfo : public AInfo
 protected:
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
-	TObjectPtr<UAetherSettingsVisualizeComponent> VisualizeComponent;
+	TObjectPtr<UAetherGlobalControllerVisualizeComponent> VisualizeComponent;
 #endif
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aether|Settings")
@@ -71,15 +71,7 @@ protected:
 	float InitTimeStampOfYear;
 	
 public:
-	AAetherSettingsInfo();
-	
-	//~ Begin AActor Interface
-	virtual void OnConstruction(const FTransform& Transform) override;
-	
-	virtual void PostInitializeComponents() override;
-	
-	virtual void Destroyed() override;
-	//~ End AActor Interface
+	AAetherGlobalController();
 	
 	//~ Begin UObject Interface
 #if WITH_EDITOR

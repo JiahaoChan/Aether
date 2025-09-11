@@ -15,9 +15,11 @@ public class Aether : ModuleRules
 			new string[] {
 				ModuleDirectory + "/Public",
 				ModuleDirectory + "/Public/Avatar",
+				ModuleDirectory + "/Public/Controller",
 				ModuleDirectory + "/Public/WeatherEvent",
 				ModuleDirectory + "/Private",
 				ModuleDirectory + "/Private/Avatar",
+				ModuleDirectory + "/Private/Controller",
 				ModuleDirectory + "/Private/WeatherEvent",
 			}
 			);

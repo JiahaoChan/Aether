@@ -23,10 +23,9 @@ FAetherState::FAetherState()
 	WindData = FVector4f::Zero();
 	DustIntensity = 0.0f;
 	FogIntensity = 0.0f;
+	CloudCoverage = 0.0f;
 	
 	Time = 0.0;
-	SunElevation = 0.0f;
-	SunAzimuth = 0.0f;
 	
 	TestValue = 0.0f;
 }
@@ -51,8 +50,6 @@ FString FAetherState::ToString() const
 	Result += FString("FogIntensity: ") + FString::SanitizeFloat(FogIntensity) + "\n";
 	
 	Result += FString("Time: ") + FString::SanitizeFloat(Time) + "\n";
-	Result += FString("SunElevation: ") + FString::SanitizeFloat(SunElevation) + "\n";
-	Result += FString("SunAzimuth: ") + FString::SanitizeFloat(SunAzimuth) + "\n";
 	
 	Result += FString("TestValue: ") + FString::SanitizeFloat(TestValue) + "\n";
 	return Result;
@@ -78,8 +75,6 @@ void FAetherState::Reset()
 	FogIntensity = 0.0f;
 	
 	Time = 0.0;
-	SunElevation = 0.0f;
-	SunAzimuth = 0.0f;
 	
 	TestValue = 0.0f;
 }
@@ -102,8 +97,6 @@ FAetherState FAetherState::operator*(float Operand)
 	Result.PuddleRainRemain = PuddleRainRemain * Operand;
 	
 	Result.Time = Time * Operand;
-	Result.SunElevation = SunElevation * Operand;
-	Result.SunAzimuth = SunAzimuth * Operand;
 	
 	Result.TestValue = TestValue * Operand;
 	return Result;
@@ -127,8 +120,6 @@ FAetherState FAetherState::operator+(const FAetherState& Another)
 	Result.FogIntensity = FogIntensity + Another.FogIntensity;
 	
 	Result.Time = Time + Another.Time;
-	Result.SunElevation = SunElevation + Another.SunElevation;
-	Result.SunAzimuth = SunAzimuth + Another.SunAzimuth;
 	
 	Result.TestValue = TestValue + Another.TestValue;
 	return Result;

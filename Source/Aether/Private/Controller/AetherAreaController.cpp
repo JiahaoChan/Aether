@@ -14,16 +14,6 @@
 
 AAetherAreaController::AAetherAreaController()
 {
-	PrimaryActorTick.bCanEverTick = false;
-	
-	bEnableAutoLODGeneration = false;
-#if WITH_EDITORONLY_DATA
-	bIsSpatiallyLoaded = false;
-#endif
-	
-	USceneComponent* ControllerRootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ControllerRoot"));
-	RootComponent = ControllerRootComponent;
-	
 #if WITH_EDITORONLY_DATA
 	UBillboardComponent* SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
 	
@@ -59,7 +49,7 @@ AAetherAreaController::AAetherAreaController()
 #endif // WITH_EDITORONLY_DATA
 	
 #if WITH_EDITORONLY_DATA
-	VisualizeComponent = CreateDefaultSubobject<UAetherControllerVisualizeComponent>(TEXT("VisualizeComponent"));
+	VisualizeComponent = CreateDefaultSubobject<UAetherAreaControllerVisualizeComponent>(TEXT("VisualizeComponent"));
 #endif
 	
 	AffectRadius = 1000.0f;
@@ -80,52 +70,6 @@ AAetherAreaController::AAetherAreaController()
 	InitWeatherEventTags = FGameplayTagContainer::EmptyContainer;
 	
 	SinceLastTickTime = 0.0;
-}
-
-void AAetherAreaController::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-	{
-		Subsystem->RegisterController(this);
-	}
-	
-	Initialize();
-}
-
-void AAetherAreaController::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-void AAetherAreaController::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-	
-#if WITH_EDITOR
-	if (const UWorld* World = GetWorld())
-	{
-		if (World->WorldType == EWorldType::Type::Editor)
-		{
-			if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-            {
-            	Subsystem->RegisterController(this);
-            }
-		}
-	}
-#endif
-	
-	Initialize();
-}
-
-void AAetherAreaController::Destroyed()
-{
-	if (UAetherWorldSubsystem* Subsystem = UAetherWorldSubsystem::Get(this))
-	{
-		Subsystem->UnregisterController(this);
-	}
-	Super::Destroyed();
 }
 
 #if WITH_EDITOR
@@ -206,7 +150,7 @@ void AAetherAreaController::DrawDebugPointInfo(const FColor& Color) const
 }
 #endif
 
-void AAetherAreaController::Initialize()
+void AAetherAreaController::InitializeController()
 {
 	ActiveWeatherInstance.Reset();
 	ActiveWeatherTags.Reset();
@@ -214,8 +158,6 @@ void AAetherAreaController::Initialize()
 	SinceLastTickTime = 0.0f;
 	
 	SurfaceWater = 0.0f;
-	
-	CalcControllerState_DielRhythm(0.0f);
 	
 	TestCount = 0;
 }

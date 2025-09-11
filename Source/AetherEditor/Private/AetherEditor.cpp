@@ -11,14 +11,14 @@
 #include "AetherComponentVisualizer.h"
 
 #include "AetherAreaController.h"
-#include "AetherSettingsInfo.h"
+#include "AetherGlobalController.h"
 
 #define LOCTEXT_NAMESPACE "FAetherEditorModule"
 
 void FAetherEditorModule::StartupModule()
 {
-	RegisterComponentVisualizer(UAetherSettingsVisualizeComponent::StaticClass()->GetFName(), MakeShareable(new FAetherSettingsComponentVisualizer));
-	RegisterComponentVisualizer(UAetherControllerVisualizeComponent::StaticClass()->GetFName(), MakeShareable(new FAetherContollerComponentVisualizer));
+	RegisterComponentVisualizer(UAetherGlobalControllerVisualizeComponent::StaticClass()->GetFName(), MakeShareable(new FAetherGlobalControllerComponentVisualizer));
+	RegisterComponentVisualizer(UAetherAreaControllerVisualizeComponent::StaticClass()->GetFName(), MakeShareable(new FAetherAreaControllerComponentVisualizer));
 }
 
 void FAetherEditorModule::ShutdownModule()

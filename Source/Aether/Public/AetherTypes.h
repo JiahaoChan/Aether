@@ -96,7 +96,7 @@ enum class EWeatherEventDuration : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FAetherState
+struct AETHER_API FAetherState
 {
 	GENERATED_BODY()
 	
@@ -158,8 +158,7 @@ struct FAetherState
 	float CloudCoverage;
 	
 	float Time;
-	float SunElevation;
-	float SunAzimuth;
+	
 	float TestValue;
 	
 	FAetherState();
@@ -170,7 +169,7 @@ struct FAetherState
 	
 	void Normalize();
 	
-	virtual FAetherState operator*(float Operand);
+	FAetherState operator*(float Operand);
 	
-	virtual FAetherState operator+(const FAetherState& Another);
+	FAetherState operator+(const FAetherState& Another);
 };

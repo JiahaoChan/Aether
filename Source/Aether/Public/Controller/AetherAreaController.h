@@ -6,22 +6,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
 
+#include "AetherControllerBase.h"
 #include "AetherTypes.h"
 
 #include "AetherAreaController.generated.h"
 
 #if WITH_EDITORONLY_DATA
 UCLASS(NotBlueprintable)
-class UAetherControllerVisualizeComponent : public UActorComponent
+class UAetherAreaControllerVisualizeComponent : public UActorComponent
 {
 	GENERATED_BODY()
 };
 #endif
 
-UCLASS(HideCategories = ("Collision", "Physics", "Cooking", "Navigation", "Networking", "Replication", "Input", "Rendering", "HLOD"))
-class AETHER_API AAetherAreaController : public AActor
+UCLASS()
+class AETHER_API AAetherAreaController : public AAetherControllerBase
 {
 	GENERATED_BODY()
 	
@@ -30,7 +30,7 @@ class AETHER_API AAetherAreaController : public AActor
 protected:
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
-	TObjectPtr<UAetherControllerVisualizeComponent> VisualizeComponent;
+	TObjectPtr<UAetherAreaControllerVisualizeComponent> VisualizeComponent;
 #endif
 	
 	//~ Begin System Config Property
@@ -98,22 +98,6 @@ protected:
 public:
 	AAetherAreaController();
 	
-	//~ Begin AActor Interface
-protected:
-	virtual void BeginPlay() override;
-	
-public:
-	virtual void Tick(float DeltaTime) override;
-	
-	virtual void OnConstruction(const FTransform& Transform) override;
-	
-	virtual void Destroyed() override;
-	
-#if WITH_EDITOR
-	virtual bool CanChangeIsSpatiallyLoadedFlag() const override { return false; }
-#endif
-	//~ End AActor Interface
-	
 	//~ Begin UObject Interface
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -128,7 +112,7 @@ public:
 #endif
 	
 protected:
-	void Initialize();
+	virtual void InitializeController() override;
 	
 	virtual void TickAetherController(float DeltaTime);
 	
