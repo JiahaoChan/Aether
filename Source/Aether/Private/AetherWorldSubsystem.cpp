@@ -17,7 +17,7 @@
 #include "AetherPluginSettings.h"
 #include "AetherStats.h"
 
-#include "AetherWorldSubsystem.inl"
+#include "AetherWorldMath.inl"
 
 #if UE_ENABLE_DEBUG_DRAWING
 static TAutoConsoleVariable<int32> CVarVisualizeAetherState(
